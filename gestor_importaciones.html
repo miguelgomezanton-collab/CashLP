@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Importaciones — Legal Pigeon Caja</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --surface3: #e8e7e0;
+  --border: #dddcd6;
+  --border-strong: #b8b7b0;
+  --ink: #1a1a18;
+  --ink-dim: #6b6b65;
+  --ink-faint: #a8a8a2;
+  --green: #1a7a4a;
+  --green-bg: #e8f5ee;
+  --green-border: #a8d8bc;
+  --red: #c0392b;
+  --red-bg: #fdf0ee;
+  --amber: #b5620a;
+  --amber-bg: #fef6ec;
+  --amber-border: #f0c080;
+  --blue: #1a4a8a;
+  --blue-bg: #eef3fc;
+  --blue-border: #a8c0e8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',sans-serif; font-size:14px; min-height:100vh; }
+
+nav {
+  background:var(--ink); color:white; padding:0 32px; height:52px;
+  display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:200;
+}
+.nav-brand { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; letter-spacing:.05em; display:flex; align-items:center; gap:10px; }
+.nav-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; flex-shrink:0; }
+.nav-tabs { display:flex; height:100%; }
+.nav-tab { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.05em; padding:0 18px; height:100%; display:flex; align-items:center; cursor:pointer; color:rgba(255,255,255,.5); border-bottom:2px solid transparent; transition:all .15s; }
+.nav-tab:hover { color:rgba(255,255,255,.85); }
+.nav-tab.active { color:white; border-bottom-color:#4ade80; }
+.nav-right { font-family:'IBM Plex Mono',monospace; font-size:10px; color:rgba(255,255,255,.35); }
+
+.app { display:flex; min-height:calc(100vh - 52px); }
+
+/* SIDEBAR */
+.sidebar { width:200px; background:var(--surface); border-right:1px solid var(--border); padding:16px 0; flex-shrink:0; }
+.sidebar-section { padding:0 12px; margin-bottom:20px; }
+.sidebar-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.12em; color:var(--ink-faint); text-transform:uppercase; margin-bottom:8px; padding:0 4px; }
+.sidebar-item { display:flex; align-items:center; justify-content:space-between; padding:7px 10px; border-radius:3px; cursor:pointer; font-size:12px; color:var(--ink-dim); transition:all .1s; margin-bottom:1px; }
+.sidebar-item:hover { background:var(--surface2); color:var(--ink); }
+.sidebar-item.active { background:var(--ink); color:white; }
+.sidebar-item-left { display:flex; align-items:center; gap:7px; }
+.sidebar-badge { font-family:'IBM Plex Mono',monospace; font-size:9px; padding:1px 5px; border-radius:2px; background:rgba(255,255,255,.15); }
+.sidebar-item.active .sidebar-badge { background:rgba(255,255,255,.2); }
+.sidebar-badge.amber { background:var(--amber-bg); color:var(--amber); }
+.sidebar-divider { height:1px; background:var(--border); margin:12px 0; }
+
+/* MAIN */
+main { flex:1; padding:28px 32px 60px; max-width:1100px; }
+
+/* PAGE HEADER */
+.page-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; }
+.page-title { font-size:20px; font-weight:700; line-height:1; }
+.page-sub { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-dim); margin-top:5px; }
+
+/* MONTH TABS */
+.month-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+.month-tab { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:10px 20px; cursor:pointer; color:var(--ink-faint); border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .12s; display:flex; align-items:center; gap:8px; }
+.month-tab:hover { color:var(--ink); }
+.month-tab.active { color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+.month-tab .tab-count { font-size:9px; padding:1px 5px; border-radius:10px; background:var(--surface2); }
+.month-tab.active .tab-count { background:var(--ink); color:white; }
+
+/* STATS ROW */
+.stats-row { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:4px; overflow:hidden; margin-bottom:20px; }
+.stat { background:var(--surface); padding:14px 16px; }
+.stat-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:6px; }
+.stat-val { font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:700; line-height:1; }
+.stat-sub { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--ink-faint); margin-top:3px; }
+
+/* UPLOAD ZONE */
+.upload-section { margin-bottom:20px; }
+.upload-zone { border:2px dashed var(--border-strong); border-radius:6px; padding:28px 24px; display:flex; align-items:center; gap:20px; cursor:pointer; transition:all .2s; background:var(--surface2); position:relative; }
+.upload-zone:hover, .upload-zone.dragover { border-color:var(--ink); background:var(--surface3); }
+.upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.upload-icon { font-size:28px; flex-shrink:0; }
+.upload-text-main { font-size:14px; font-weight:600; margin-bottom:3px; }
+.upload-text-sub { font-size:12px; color:var(--ink-dim); }
+.upload-banks { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.bank-tag { font-family:'IBM Plex Mono',monospace; font-size:9px; padding:2px 7px; border:1px solid var(--border); border-radius:2px; color:var(--ink-dim); }
+.upload-btn { margin-left:auto; flex-shrink:0; }
+
+/* IMPORTS TIMELINE */
+.imports-list { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+
+.import-group { background:var(--surface); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+.import-group-header { padding:12px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:background .1s; }
+.import-group-header:hover { background:var(--surface2); }
+.import-group-week { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; color:var(--ink-dim); letter-spacing:.06em; flex-shrink:0; width:80px; }
+.import-group-banks { display:flex; gap:6px; flex:1; flex-wrap:wrap; }
+.import-group-stats { display:flex; gap:16px; align-items:center; flex-shrink:0; }
+.import-group-stat { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-dim); }
+.import-group-toggle { font-size:11px; color:var(--ink-faint); transition:transform .2s; }
+.import-group.open .import-group-toggle { transform:rotate(180deg); }
+
+.import-group-body { border-top:1px solid var(--border); display:none; }
+.import-group.open .import-group-body { display:block; }
+
+.import-entry { display:flex; align-items:center; gap:12px; padding:9px 16px; border-bottom:1px solid var(--border); }
+.import-entry:last-child { border-bottom:none; }
+.import-bank-pill { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; padding:2px 8px; border-radius:2px; flex-shrink:0; width:80px; text-align:center; }
+.import-date { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-dim); flex-shrink:0; width:70px; }
+.import-filename { font-size:11px; color:var(--ink-dim); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.import-count { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink); }
+.import-new { font-family:'IBM Plex Mono',monospace; font-size:10px; padding:1px 6px; border-radius:2px; background:var(--green-bg); color:var(--green); }
+.import-dup { font-family:'IBM Plex Mono',monospace; font-size:10px; padding:1px 6px; border-radius:2px; background:var(--surface2); color:var(--ink-faint); }
+.import-del { font-size:11px; color:var(--ink-faint); cursor:pointer; padding:4px; border-radius:2px; }
+.import-del:hover { color:var(--red); background:var(--red-bg); }
+
+/* BANK PILL COLORS */
+.bp-santander { background:#ffeef0; color:#c0001e; }
+.bp-bbva      { background:#eef2ff; color:#1a4ab0; }
+.bp-sabadell  { background:#eef9ff; color:#006699; }
+.bp-bankinter { background:#fff0ee; color:#c0390a; }
+.bp-caixabank { background:#fff8e8; color:#8a6000; }
+.bp-unknown   { background:var(--surface2); color:var(--ink-dim); }
+
+/* PROCESSING OVERLAY */
+.processing-bar { background:var(--blue-bg); border:1px solid var(--blue-border); border-radius:4px; padding:12px 16px; display:none; align-items:center; gap:12px; margin-bottom:16px; }
+.processing-bar.active { display:flex; }
+.processing-spinner { width:16px; height:16px; border:2px solid var(--blue-border); border-top-color:var(--blue); border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.processing-text { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--blue); }
+
+/* DEDUP RESULT */
+.dedup-toast { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:14px 18px; margin-bottom:16px; display:none; }
+.dedup-toast.show { display:block; }
+.dedup-toast-title { font-weight:600; font-size:13px; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.dedup-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.dedup-row:last-child { border:none; }
+.dedup-key { color:var(--ink-dim); }
+.dedup-val { font-family:'IBM Plex Mono',monospace; font-weight:500; }
+
+/* EMPTY STATE */
+.empty-state { text-align:center; padding:60px 32px; color:var(--ink-faint); }
+.empty-icon { font-size:40px; margin-bottom:12px; }
+.empty-title { font-size:15px; font-weight:600; color:var(--ink-dim); margin-bottom:6px; }
+.empty-sub { font-size:12px; }
+
+/* ACTIONS */
+.btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:8px 16px; border-radius:3px; border:1px solid var(--border); cursor:pointer; font-weight:500; transition:all .15s; background:var(--surface); color:var(--ink-dim); }
+.btn:hover { border-color:var(--ink); color:var(--ink); }
+.btn-primary { background:var(--ink); color:white; border-color:var(--ink); }
+.btn-primary:hover { background:#2a2a28; }
+.btn-danger { color:var(--red); border-color:#f5bcc4; }
+.btn-danger:hover { background:var(--red-bg); border-color:var(--red); }
+
+/* REVIEW MODAL */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:300; display:none; align-items:center; justify-content:center; }
+.modal-bg.open { display:flex; }
+.modal { background:var(--surface); border-radius:6px; width:min(700px, 96vw); max-height:90vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,.2); }
+.modal-header { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.modal-title { font-size:14px; font-weight:700; }
+.modal-close { font-size:18px; cursor:pointer; color:var(--ink-faint); line-height:1; padding:2px 6px; }
+.modal-close:hover { color:var(--ink); }
+.modal-body { overflow-y:auto; padding:0; flex:1; }
+.modal-footer { padding:14px 22px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; flex-shrink:0; }
+
+.modal-tbl { width:100%; border-collapse:collapse; }
+.modal-tbl thead tr { border-bottom:2px solid var(--border); position:sticky; top:0; background:var(--surface); }
+.modal-tbl th { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); padding:10px 14px; text-align:left; font-weight:500; }
+.modal-tbl tbody tr { border-bottom:1px solid var(--border); }
+.modal-tbl tbody tr:last-child { border:none; }
+.modal-tbl tbody tr.is-dup { opacity:.45; }
+.modal-tbl td { padding:8px 14px; font-size:11px; }
+.modal-tbl td.mono { font-family:'IBM Plex Mono',monospace; }
+.pos { color:var(--green); }
+.neg { color:var(--red); }
+
+/* CAT PILL */
+.cat-pill-sm { font-family:'IBM Plex Mono',monospace; font-size:9px; padding:2px 6px; border-radius:2px; white-space:nowrap; }
+
+/* MODAL FILTER CHIPS */
+.mchip { font-family:'IBM Plex Mono',monospace; font-size:10px; padding:4px 10px; border:1px solid var(--border); border-radius:3px; cursor:pointer; color:var(--ink-faint); transition:all .12s; }
+.mchip:hover { border-color:var(--ink); color:var(--ink); }
+.mchip.on { background:var(--ink); color:white; border-color:var(--ink); }
+.mchip.warn { border-color:var(--amber-border); color:var(--amber); }
+.mchip.warn.on { background:var(--amber); color:white; border-color:var(--amber); }
+
+/* MODAL STATS BAR */
+.mstat { padding:8px 18px; font-family:'IBM Plex Mono',monospace; font-size:11px; border-right:1px solid var(--border); }
+.mstat:last-child { border-right:none; }
+.mstat-label { font-size:9px; color:var(--ink-faint); letter-spacing:.06em; text-transform:uppercase; }
+.mstat-val { font-size:14px; font-weight:700; margin-top:1px; }
+
+/* INLINE CAT SELECTOR */
+.inline-cat { position:relative; display:inline-block; }
+.cat-btn { display:inline-flex; align-items:center; gap:5px; padding:3px 8px 3px 9px; border-radius:3px; border:1px solid transparent; font-family:'IBM Plex Mono',monospace; font-size:10px; cursor:pointer; transition:all .12s; white-space:nowrap; }
+.cat-btn:hover { filter:brightness(.93); }
+.cat-btn .arr { font-size:8px; opacity:.5; }
+.cat-btn.changed { outline:2px solid var(--blue); outline-offset:1px; }
+
+.cat-dd { position:absolute; top:calc(100% + 3px); left:0; z-index:400; background:var(--surface); border:1px solid var(--border); border-radius:4px; box-shadow:0 6px 24px rgba(0,0,0,.14); min-width:230px; max-height:280px; overflow-y:auto; display:none; }
+.cat-dd.open { display:block; }
+.cat-dd::-webkit-scrollbar { width:3px; }
+.cat-dd::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:2px; }
+.cat-dd-item { display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink); }
+.cat-dd-item:hover { background:var(--surface2); }
+.cat-dd-item.active { font-weight:600; }
+.cat-dd-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+
+/* CONF BADGES */
+.conf { font-family:'IBM Plex Mono',monospace; font-size:9px; padding:2px 6px; border-radius:2px; }
+.conf-high { background:var(--green-bg); color:var(--green); }
+.conf-med  { background:var(--amber-bg); color:var(--amber); }
+.conf-low  { background:var(--red-bg); color:var(--red); }
+.conf-learned { background:var(--blue-bg); color:var(--blue); }
+
+/* ROW highlight when needs review */
+.modal-tbl tbody tr.needs-review td { background:#fffbf4; }
+.modal-tbl tbody tr.is-dup { opacity:.4; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><div class="nav-dot"></div>LEGAL PIGEON · CAJA</div>
+  <div class="nav-tabs">
+    <div class="nav-tab" onclick="window.location='ingesta_extractos.html'">INGESTA</div>
+    <div class="nav-tab active">IMPORTACIONES</div>
+    <div class="nav-tab" onclick="window.location='analizador_caja.html'">ANÁLISIS</div>
+  </div>
+  <div class="nav-right" id="nav-total-movs">— movimientos guardados</div>
+</nav>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">2026</div>
+      <div class="sidebar-item active" id="sb-ENE-2026" onclick="setMonth('ENE-2026')">
+        <div class="sidebar-item-left">ENE</div>
+        <span class="sidebar-badge" id="badge-ENE-2026">0</span>
+      </div>
+      <div class="sidebar-item" id="sb-FEB-2026" onclick="setMonth('FEB-2026')">
+        <div class="sidebar-item-left">FEB</div>
+        <span class="sidebar-badge" id="badge-FEB-2026">0</span>
+      </div>
+      <div class="sidebar-item" id="sb-MAR-2026" onclick="setMonth('MAR-2026')">
+        <div class="sidebar-item-left">MAR</div>
+        <span class="sidebar-badge" id="badge-MAR-2026">0</span>
+      </div>
+      <div class="sidebar-item" id="sb-ABR-2026" onclick="setMonth('ABR-2026')">
+        <div class="sidebar-item-left">ABR</div>
+        <span class="sidebar-badge" id="badge-ABR-2026">0</span>
+      </div>
+      <div class="sidebar-item" id="sb-MAY-2026" onclick="setMonth('MAY-2026')">
+        <div class="sidebar-item-left">MAY</div>
+        <span class="sidebar-badge" id="badge-MAY-2026">0</span>
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Acciones</div>
+      <div class="sidebar-item" onclick="openUpload()"><div class="sidebar-item-left">↑ Subir extracto</div></div>
+      <div class="sidebar-item" onclick="exportAll()"><div class="sidebar-item-left">↓ Exportar mes</div></div>
+      <div class="sidebar-item" onclick="showLearnedRules()"><div class="sidebar-item-left">★ Reglas aprendidas</div></div>
+      <div class="sidebar-item" onclick="if(confirm('¿Borrar todos los datos?')) clearAll()"><div class="sidebar-item-left" style="color:var(--red)">⊘ Borrar todo</div></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <main>
+
+    <div class="page-header">
+      <div>
+        <div class="page-title" id="page-title">Enero 2026</div>
+        <div class="page-sub" id="page-sub">Cargando...</div>
+      </div>
+      <button class="btn btn-primary" onclick="openUpload()">↑ Subir extracto semanal</button>
+    </div>
+
+    <!-- PROCESSING BAR -->
+    <div class="processing-bar" id="processing-bar">
+      <div class="processing-spinner"></div>
+      <div class="processing-text" id="processing-text">Procesando archivo...</div>
+    </div>
+
+    <!-- DEDUP RESULT -->
+    <div class="dedup-toast" id="dedup-toast"></div>
+
+    <!-- STATS -->
+    <div class="stats-row" id="stats-row">
+      <div class="stat"><div class="stat-label">Movimientos</div><div class="stat-val">—</div></div>
+    </div>
+
+    <!-- IMPORTS LIST -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-faint); letter-spacing:.1em; text-transform:uppercase;">Extractos importados</div>
+      <div id="banks-summary" style="display:flex; gap:6px;"></div>
+    </div>
+
+    <div class="imports-list" id="imports-list">
+      <div class="empty-state">
+        <div class="empty-icon">📂</div>
+        <div class="empty-title">Sin extractos para este mes</div>
+        <div class="empty-sub">Sube el primer extracto semanal para empezar</div>
+      </div>
+    </div>
+
+    <!-- UPLOAD ZONE (inline) -->
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input-main').click()">
+      <input type="file" id="file-input-main" accept=".csv,.xlsx,.xls" multiple onchange="handleFiles(this.files)">
+      <div class="upload-icon">📎</div>
+      <div>
+        <div class="upload-text-main">Arrastra aquí los extractos de la semana</div>
+        <div class="upload-text-sub">Puedes soltar varios bancos a la vez</div>
+        <div class="upload-banks">
+          <span class="bank-tag">🔴 SANTANDER</span>
+          <span class="bank-tag">🔵 BBVA</span>
+          <span class="bank-tag">🟢 SABADELL</span>
+          <span class="bank-tag">🟠 BANKINTER</span>
+          <span class="bank-tag">🟡 CAIXABANK</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOVIMIENTOS DEL MES (editable) -->
+    <div style="margin-top:28px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase;">
+          Movimientos del mes — editar categorías
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="filter-input" id="movs-search" type="text" placeholder="Buscar..." oninput="renderMovsList()" style="min-width:160px;font-size:11px;padding:5px 10px">
+          <select class="filter-select" id="movs-tipo" onchange="renderMovsList()" style="font-size:11px">
+            <option value="">Todos</option>
+            <option value="INGRESO">Entradas</option>
+            <option value="GASTO">Salidas</option>
+          </select>
+          <select class="filter-select" id="movs-cat" onchange="renderMovsList()" style="font-size:11px">
+            <option value="">Todas las categorías</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" id="movs-card">
+        <div class="table-scroll" style="max-height:420px">
+          <table class="tbl" id="movs-tbl">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th style="width:210px">Categoría</th>
+                <th style="text-align:right">Importe</th>
+                <th style="text-align:center;width:50px">✎</th>
+              </tr>
+            </thead>
+            <tbody id="movs-tbody">
+              <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:12px">Sin movimientos para este mes</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- REVIEW MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal" style="width:min(920px,97vw)">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title">Revisión de movimientos</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-dim); margin-top:3px;" id="modal-sub"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <!-- filter chips -->
+        <div style="display:flex;gap:4px;" id="modal-filter-chips">
+          <span class="mchip on" id="mchip-all"   onclick="setModalFilter('all',this)">Todos</span>
+          <span class="mchip warn" id="mchip-low" onclick="setModalFilter('low',this)">⚠ Revisar</span>
+          <span class="mchip" id="mchip-new"       onclick="setModalFilter('new',this)">Nuevos</span>
+          <span class="mchip" id="mchip-dup"       onclick="setModalFilter('dup',this)">Duplicados</span>
+        </div>
+        <div class="modal-close" onclick="closeModal()">×</div>
+      </div>
+    </div>
+
+    <!-- inline stats bar -->
+    <div id="modal-stats-bar" style="display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--surface2);">
+    </div>
+
+    <div class="modal-body">
+      <table class="modal-tbl">
+        <thead>
+          <tr>
+            <th style="width:85px">Fecha</th>
+            <th>Concepto</th>
+            <th style="width:200px">Categoría</th>
+            <th style="width:60px;text-align:center">Conf.</th>
+            <th style="width:100px;text-align:right">Importe</th>
+            <th style="width:60px;text-align:center">Estado</th>
+          </tr>
+        </thead>
+        <tbody id="modal-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- learn summary (shown after edits) -->
+    <div id="modal-learn-bar" style="display:none;padding:10px 18px;background:var(--green-bg);border-top:1px solid var(--green-border);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green)"></div>
+
+    <div class="modal-footer">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);margin-right:auto;" id="modal-footer-stats"></div>
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="modal-confirm-btn" onclick="confirmImport()">Confirmar importación →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STORAGE KEY
+// ═══════════════════════════════════════════════
+const STORE_KEY   = 'lp_caja_movs_v2';
+const IMPORTS_KEY = 'lp_caja_imports_v2';
+const RULES_KEY   = 'lp_caja_custom_rules_v1'; // learned rules
+
+// ═══════════════════════════════════════════════
+// CATEGORIZATION RULES
+// ═══════════════════════════════════════════════
+const CATEGORIES = [
+  { id:'ENTRADAS',       label:'Entradas clientes',   color:'#e8f5ee', text:'#1a7a4a' },
+  { id:'PIGEONS',        label:'PIGEONS',              color:'#fce8e6', text:'#c0392b' },
+  { id:'Sueldos netos',  label:'Sueldos',              color:'#fde8e4', text:'#a93226' },
+  { id:'Cotizaciones sociales', label:'Cotizaciones',  color:'#fde8e4', text:'#a93226' },
+  { id:'IRPF Trimestral',label:'IRPF',                 color:'#fff3dc', text:'#b5620a' },
+  { id:'IVA Trimestral', label:'IVA',                  color:'#fff3dc', text:'#b5620a' },
+  { id:'Otros Impuestos',label:'Otros Impuestos',       color:'#fff8ec', text:'#b5620a' },
+  { id:'621. Arrendamientos', label:'Arrendamientos',  color:'#eef3fc', text:'#1a4a8a' },
+  { id:'623. Servicios profesionales', label:'Serv. Prof.', color:'#eef3fc', text:'#1a4a8a' },
+  { id:'625. Primas de Seguros', label:'Seguros',      color:'#eef3fc', text:'#1a4a8a' },
+  { id:'626. Servicios Bancarios', label:'S. Bancarios', color:'#eef3fc', text:'#1a4a8a' },
+  { id:'627. Publicidad y Propaganda', label:'Publicidad', color:'#eef3fc', text:'#1a4a8a' },
+  { id:'628. Suministros', label:'Suministros',        color:'#eef3fc', text:'#1a4a8a' },
+  { id:'629. Otros Servicios', label:'Otros (IT/SaaS)',color:'#f2eef9', text:'#5b2d8a' },
+  { id:'Devolución COBRO AGIL', label:'Dev. Cobro Ágil', color:'#fff8ec', text:'#b5620a' },
+  { id:'Devoluciones BBVA', label:'Dev. BBVA',         color:'#fff8ec', text:'#b5620a' },
+  { id:'Devolución Aplazamiento Impuestos', label:'Dev. Aplaz. Imp.', color:'#fff8ec', text:'#b5620a' },
+  { id:'Devolución impuestos BSCH', label:'Dev. Imp. BSCH', color:'#fff8ec', text:'#b5620a' },
+  { id:'Devolución Línea Pagos Bsabadell', label:'Dev. Confirming', color:'#fff8ec', text:'#b5620a' },
+  { id:'Devolución Adelanto BK', label:'Dev. BK',      color:'#fff8ec', text:'#b5620a' },
+  { id:'Amortización ICO_8372', label:'Amort. ICO',    color:'#f5f5f3', text:'#6b6b65' },
+  { id:'Financiación COBRO AGIL', label:'Financ. Cobro Ágil', color:'#e8f5ee', text:'#1a7a4a' },
+  { id:'Financiación BBVA', label:'Financ. BBVA',      color:'#e8f5ee', text:'#1a7a4a' },
+  { id:'Financiación Impuestos BK', label:'Financ. BK', color:'#e8f5ee', text:'#1a7a4a' },
+  { id:'Financiación Impuestos BSCH', label:'Financ. BSCH', color:'#e8f5ee', text:'#1a7a4a' },
+  { id:'Sin categoría',  label:'Sin categorizar',      color:'#f5f5f3', text:'#6b6b65' },
+];
+
+const RULES = [
+  { cat:'PIGEONS',        patterns:['legal drop', 'ka recovering', 'ka procutech'] },
+  { cat:'Sueldos netos',  patterns:['nomina', 'traspaso: nomina', 'concepto nomina', 'finiquito'] },
+  { cat:'Cotizaciones sociales', patterns:['tgss', 'cotizacion', 'seguridad social'] },
+  { cat:'IRPF Trimestral', patterns:['retenciones e ing. a cta. ggee', 'irpf', 'modelo 111'], exclude:['impuesto: 2025 retenciones e ing. a cta. ggee.'] },
+  { cat:'Otros Impuestos', patterns:['retenciones e ing. a cta. ggee.', 'impuesto: 2025 retenciones','impuesto: 2026 retenciones'] },
+  { cat:'IVA Trimestral', patterns:['iva autoliquidacion', 'modelo 303', 'impuesto: 2025 iva', 'impuesto: 2026 iva'] },
+  { cat:'621. Arrendamientos', patterns:['igufer', 'alquiler', 'arrendamiento'] },
+  { cat:'625. Primas de Seguros', patterns:['santander vida', 'seg. vida', 'securitas direct'] },
+  { cat:'626. Servicios Bancarios', patterns:['cargo por gastos y comisiones', 'cobro tarifa plana', 'gastos y comisiones', 'getnet europe', 'comision mantenimiento', 'comision administracion cuenta', 'liquidacion entrada de remesas'] },
+  { cat:'628. Suministros', patterns:['aigues de barcelona', 'endesa', 'factor energia', 'telefonica de espana', 'telefonica moviles', 'vodafone', '0000notificaciones'] },
+  { cat:'629. Otros Servicios', patterns:['slack', 'notion', 'aws', 'amazon web services', 'google*cloud', 'github', 'cursor', 'render.com', 'heroku', 'fivetran', 'mailgun', 'mongodb', 'autopistas', 'paypal', 'cypress', 'ionos', 'framer', 'quipu', 'hubspot', 'meutic', 'punto neutro', 'fifty soluciones', 'multiserveis', 'openai', 'claude.ai', 'aircall', 'freshworks', 'cloudways', 'canva', 'holded', 'microsoft', 'apple.com', 'zoom', 'zapier', 'reintegro cajero', 'pago movil', 'parking', 'cheri', 'tunelspan', 'guinot', 'compra '] },
+  { cat:'623. Servicios profesionales', patterns:['payfit', 'robert walters', 'miguel angel gomez concepto factura', 'joseu alcantara', 'ledy salas'] },
+  { cat:'627. Publicidad y Propaganda', patterns:['google*ads', 'google ads', 'meta ads'] },
+  { cat:'Devolución impuestos BSCH', patterns:['liquidacion periodica prestamo 0049 4769 103'] },
+  { cat:'Amortización ICO_8372', patterns:['liquidacion periodica prestamo 0049 4769 123 0608372', 'liquidacion periodica prestamo 0049 4769 123'] },
+  { cat:'Devolución COBRO AGIL', patterns:['efecto a su cargo numero'] },
+  { cat:'Devoluciones BBVA', patterns:['cargo por amortizacion de prestamo/credito bbva'] },
+  { cat:'Devolución Aplazamiento Impuestos', patterns:['domiciliacion impuesto: 2.026 abonare', 'domiciliacion impuesto: 2.025 abonare'] },
+  { cat:'Devolución Línea Pagos Bsabadell', patterns:['pago proveedores confirming'] },
+  { cat:'Devolución Adelanto BK', patterns:['anticipo fras'] },
+  { cat:'Financiación COBRO AGIL', patterns:['abono de la remesa 60.', 'abono de la remesa 60.291', 'abono de la remesa 60.211'] },
+  { cat:'Financiación BBVA', patterns:['abono por disposicion de prestamo/credito'] },
+  { cat:'Financiación Impuestos BSCH', patterns:['disposición prestamo 0610645', 'disposicion prestamo 0610645'] },
+  { cat:'Financiación Impuestos BK', patterns:['imp inic pt:', '510012903'] },
+  { cat:'ENTRADAS', patterns:['transferencia de ', 'transferencia inmediata de '], exclude:['a favor de legal pigeon','a favor de legal drop','a favor de miquel','a favor de joseu','a favor de gabriel','a favor de ledy','tgss','impuesto','liquidacion periodica','domiciliacion','cobro tarifa','liquidacion entrada'], requireIngreso: true },
+];
+
+function categorize(concepto, importe) {
+  const c = concepto.toLowerCase();
+  const isIngreso = importe > 0;
+
+  // 1. Check custom learned rules first (highest priority)
+  const customRules = loadCustomRules();
+  for (const rule of customRules) {
+    if (c.includes(rule.pattern)) return { cat: rule.cat, confidence: 'high', learned: true };
+  }
+
+  // 2. Built-in rules
+  for (const rule of RULES) {
+    if (!rule.patterns.some(p => c.includes(p))) continue;
+    if ((rule.exclude||[]).some(e => c.includes(e))) continue;
+    if (rule.requireIngreso && !isIngreso) continue;
+    return { cat: rule.cat, confidence: 'high', learned: false };
+  }
+
+  // 3. Fallback heuristics
+  if (isIngreso && c.includes('transferencia')) return { cat: 'ENTRADAS', confidence: 'med', learned: false };
+  return { cat: 'Sin categoría', confidence: 'low', learned: false };
+}
+
+// ═══════════════════════════════════════════════
+// CUSTOM RULES (learned)
+// ═══════════════════════════════════════════════
+function loadCustomRules() {
+  try { return JSON.parse(localStorage.getItem(RULES_KEY) || '[]'); } catch { return []; }
+}
+function saveCustomRules(rules) { localStorage.setItem(RULES_KEY, JSON.stringify(rules)); }
+
+function learnRule(concepto, cat) {
+  // Extract a meaningful pattern: the most unique substring (first 40 chars of normalized concepto)
+  const pattern = concepto.toLowerCase().trim().slice(0, 50);
+  const rules = loadCustomRules();
+  // Don't duplicate
+  if (rules.some(r => r.pattern === pattern)) {
+    // Update existing
+    const existing = rules.find(r => r.pattern === pattern);
+    existing.cat = cat;
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    rules.push({ pattern, cat, concepto: concepto.slice(0, 80), createdAt: new Date().toISOString() });
+  }
+  saveCustomRules(rules);
+}
+
+// ═══════════════════════════════════════════════
+// DEDUPLICATION HASH
+// ═══════════════════════════════════════════════
+function makeHash(fecha, concepto, importe) {
+  // Normalize: trim, lowercase concepto, round importe to 2 decimals
+  const norm = `${fecha.trim()}|${concepto.trim().toLowerCase().slice(0,80)}|${parseFloat(importe).toFixed(2)}`;
+  // Simple hash
+  let h = 0;
+  for (let i = 0; i < norm.length; i++) h = (Math.imul(31, h) + norm.charCodeAt(i)) | 0;
+  return Math.abs(h).toString(36);
+}
+
+// ═══════════════════════════════════════════════
+// MONTH DETECTION
+// ═══════════════════════════════════════════════
+const MONTH_NAMES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+const MONTH_FULL  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function detectMonthFromRows(rows) {
+  // Look at all dates and find the most common month/year
+  const counts = {};
+  rows.forEach(r => {
+    const d = parseDate(r.fecha);
+    if (!d) return;
+    const key = `${MONTH_NAMES[d.getMonth()]}-${d.getFullYear()}`;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  if (Object.keys(counts).length === 0) return null;
+  return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
+}
+
+function parseDate(s) {
+  if (!s) return null;
+  const parts = s.split('/');
+  if (parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]);
+  return new Date(s);
+}
+
+// ═══════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════
+function loadMovs() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
+}
+function saveMovs(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+
+function loadImports() {
+  try { return JSON.parse(localStorage.getItem(IMPORTS_KEY) || '[]'); } catch { return []; }
+}
+function saveImports(data) { localStorage.setItem(IMPORTS_KEY, JSON.stringify(data)); }
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let currentMonth = 'ENE-2026';
+let pendingImport = null; // {rows, bank, filename, month, newRows, dupRows}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+window.onload = () => {
+  updateSidebar();
+  renderMonth(currentMonth);
+  renderMovsList();
+};
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function setMonth(m) {
+  currentMonth = m;
+  document.querySelectorAll('.sidebar-item[id^=sb-]').forEach(el => el.classList.remove('active'));
+  document.getElementById('sb-' + m)?.classList.add('active');
+  renderMonth(m);
+  renderMovsList();
+}
+
+function renderMonth(monthKey) {
+  const [mon, year] = monthKey.split('-');
+  const monIdx = MONTH_NAMES.indexOf(mon);
+  const fullName = `${MONTH_FULL[monIdx]} ${year}`;
+
+  document.getElementById('page-title').textContent = fullName;
+
+  const movsData = loadMovs();
+  const monthMovs = movsData[monthKey] || {};
+  const allMovs = Object.values(monthMovs);
+  const imports = loadImports().filter(i => i.month === monthKey);
+
+  document.getElementById('page-sub').textContent =
+    `${allMovs.length} movimientos · ${imports.length} extracto${imports.length !== 1 ? 's' : ''} importado${imports.length !== 1 ? 's' : ''}`;
+
+  // Stats
+  const entradas = allMovs.filter(m => m.importe > 0).reduce((s,m) => s + m.importe, 0);
+  const salidas  = Math.abs(allMovs.filter(m => m.importe < 0).reduce((s,m) => s + m.importe, 0));
+  const saldo    = entradas - salidas;
+  const banks    = [...new Set(imports.map(i => i.bank))];
+  const fmt = n => new Intl.NumberFormat('es-ES', {minimumFractionDigits:0, maximumFractionDigits:0}).format(n) + '€';
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat"><div class="stat-label">Movimientos</div><div class="stat-val">${allMovs.length}</div><div class="stat-sub">Total acumulado</div></div>
+    <div class="stat"><div class="stat-label">Entradas</div><div class="stat-val" style="color:var(--green)">${fmt(entradas)}</div><div class="stat-sub">${allMovs.filter(m=>m.importe>0).length} cobros</div></div>
+    <div class="stat"><div class="stat-label">Salidas</div><div class="stat-val" style="color:var(--red)">${fmt(salidas)}</div><div class="stat-sub">${allMovs.filter(m=>m.importe<0).length} pagos</div></div>
+    <div class="stat"><div class="stat-label">Saldo neto</div><div class="stat-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${saldo>=0?'+':''}${fmt(saldo)}</div><div class="stat-sub">del mes</div></div>
+    <div class="stat"><div class="stat-label">Bancos</div><div class="stat-val">${banks.length || '—'}</div><div class="stat-sub">${banks.join(', ') || 'Sin datos'}</div></div>
+  `;
+
+  // Banks summary
+  const bankColors = {santander:'bp-santander', bbva:'bp-bbva', sabadell:'bp-sabadell', bankinter:'bp-bankinter', caixabank:'bp-caixabank'};
+  const bankEmoji  = {santander:'🔴', bbva:'🔵', sabadell:'🟢', bankinter:'🟠', caixabank:'🟡'};
+  document.getElementById('banks-summary').innerHTML = banks.map(b =>
+    `<span class="import-bank-pill ${bankColors[b]||'bp-unknown'}">${bankEmoji[b]||'🏦'} ${b.toUpperCase()}</span>`
+  ).join('');
+
+  // Imports grouped by week
+  if (imports.length === 0) {
+    document.getElementById('imports-list').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📂</div>
+        <div class="empty-title">Sin extractos para ${fullName}</div>
+        <div class="empty-sub">Arrastra los extractos bancarios abajo o pulsa el botón de arriba</div>
+      </div>`;
+    return;
+  }
+
+  // Group by upload session (same date+hour)
+  const groups = {};
+  imports.forEach(imp => {
+    const sessionKey = imp.uploadedAt ? imp.uploadedAt.slice(0, 13) : imp.id; // group by hour
+    if (!groups[sessionKey]) groups[sessionKey] = [];
+    groups[sessionKey].push(imp);
+  });
+
+  document.getElementById('imports-list').innerHTML = Object.entries(groups)
+    .sort((a,b) => b[0].localeCompare(a[0]))
+    .map(([sessionKey, group], gi) => {
+      const totalNew  = group.reduce((s,i) => s + i.newCount, 0);
+      const totalDup  = group.reduce((s,i) => s + i.dupCount, 0);
+      const uploadDt  = group[0].uploadedAt ? new Date(group[0].uploadedAt).toLocaleDateString('es-ES', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '—';
+      const isOpen    = gi === 0; // first group open by default
+
+      const entriesHtml = group.map(imp => `
+        <div class="import-entry">
+          <span class="import-bank-pill ${bankColors[imp.bank]||'bp-unknown'}">${bankEmoji[imp.bank]||'🏦'} ${imp.bank.toUpperCase()}</span>
+          <span class="import-date">${new Date(imp.uploadedAt).toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'})}</span>
+          <span class="import-filename">${imp.filename}</span>
+          <span class="import-count">${imp.newCount + imp.dupCount} mov.</span>
+          <span class="import-new">+${imp.newCount} nuevos</span>
+          ${imp.dupCount > 0 ? `<span class="import-dup">${imp.dupCount} dup.</span>` : ''}
+          <span class="import-del" onclick="deleteImport('${imp.id}', '${monthKey}')" title="Eliminar esta importación">🗑</span>
+        </div>
+      `).join('');
+
+      return `
+        <div class="import-group ${isOpen?'open':''}" id="group-${sessionKey}">
+          <div class="import-group-header" onclick="toggleGroup('${sessionKey}')">
+            <span class="import-group-week">${uploadDt}</span>
+            <div class="import-group-banks">
+              ${group.map(i => `<span class="import-bank-pill ${bankColors[i.bank]||'bp-unknown'}" style="font-size:9px;">${bankEmoji[i.bank]||'🏦'} ${i.bank.toUpperCase()}</span>`).join('')}
+            </div>
+            <div class="import-group-stats">
+              <span class="import-group-stat" style="color:var(--green)">+${totalNew} nuevos</span>
+              ${totalDup > 0 ? `<span class="import-group-stat">${totalDup} dup.</span>` : ''}
+            </div>
+            <span class="import-group-toggle">▾</span>
+          </div>
+          <div class="import-group-body">${entriesHtml}</div>
+        </div>`;
+    }).join('');
+
+  updateNavTotal();
+}
+
+function toggleGroup(key) {
+  document.getElementById('group-' + key)?.classList.toggle('open');
+}
+
+function updateSidebar() {
+  const movsData = loadMovs();
+  Object.keys(movsData).forEach(monthKey => {
+    const count = Object.keys(movsData[monthKey] || {}).length;
+    const badge = document.getElementById('badge-' + monthKey);
+    if (badge) {
+      badge.textContent = count;
+      if (count > 0) badge.classList.add('amber');
+      else badge.classList.remove('amber');
+    }
+  });
+}
+
+function updateNavTotal() {
+  const movsData = loadMovs();
+  const total = Object.values(movsData).reduce((s, m) => s + Object.keys(m||{}).length, 0);
+  document.getElementById('nav-total-movs').textContent = `${total} movimientos guardados`;
+}
+
+// ═══════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════
+function openUpload() { document.getElementById('file-input-main').click(); }
+
+async function handleFiles(files) {
+  const fileArr = Array.from(files);
+  if (fileArr.length === 0) return;
+
+  for (const file of fileArr) {
+    await processFile(file);
+  }
+}
+
+function processFile(file) {
+  return new Promise((resolve) => {
+    showProcessing(`Leyendo ${file.name}...`);
+    const ext = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+
+    reader.onload = e => {
+      try {
+        let rows = ext === 'xlsx' || ext === 'xls'
+          ? parseXLSX(e.target.result)
+          : parseCSV(e.target.result);
+
+        if (!rows.length) {
+          hideProcessing();
+          alert(`No se pudieron leer movimientos de "${file.name}"`);
+          return resolve();
+        }
+
+        const bank = detectBank(file.name, rows);
+        const month = detectMonthFromRows(rows) || currentMonth;
+
+        showProcessing(`Categorizando y deduplicando ${rows.length} movimientos...`);
+
+        // Build categorized rows
+        const categorized = rows.map(r => {
+          const result = categorize(r.concepto, r.importe);
+          return {
+            ...r,
+            cat: result.cat,
+            confidence: result.confidence,
+            learned: result.learned,
+            hash: makeHash(r.fecha, r.concepto, r.importe),
+          };
+        });
+
+        // Dedup against existing
+        const movsData = loadMovs();
+        const monthMovs = movsData[month] || {};
+        const existingHashes = new Set(Object.keys(monthMovs));
+
+        const newRows = categorized.filter(r => !existingHashes.has(r.hash));
+        const dupRows = categorized.filter(r => existingHashes.has(r.hash));
+
+        pendingImport = { rows: categorized, bank, filename: file.name, month, newRows, dupRows };
+        hideProcessing();
+        showReviewModal(pendingImport);
+        resolve();
+      } catch (err) {
+        hideProcessing();
+        alert(`Error procesando "${file.name}": ${err.message}`);
+        console.error(err);
+        resolve();
+      }
+    };
+
+    if (ext === 'xlsx' || ext === 'xls') reader.readAsArrayBuffer(file);
+    else reader.readAsText(file, 'UTF-8');
+  });
+}
+
+// ═══════════════════════════════════════════════
+// REVIEW MODAL — interactive with learning
+// ═══════════════════════════════════════════════
+let modalFilter = 'all';
+let editedRows  = {}; // hash → new cat (corrections made in modal)
+
+function setModalFilter(f, el) {
+  modalFilter = f;
+  document.querySelectorAll('.mchip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  renderModalRows();
+}
+
+function showReviewModal({ rows, bank, filename, month, newRows, dupRows }) {
+  modalFilter = 'all';
+  editedRows  = {};
+
+  const bankEmoji = {santander:'🔴', bbva:'🔵', sabadell:'🟢', bankinter:'🟠', caixabank:'🟡'};
+  const [mon, year] = month.split('-');
+  const monIdx = MONTH_NAMES.indexOf(mon);
+
+  document.getElementById('modal-title').textContent =
+    `${bankEmoji[bank]||'🏦'} ${bank.toUpperCase()} — ${filename}`;
+  document.getElementById('modal-sub').textContent =
+    `${MONTH_FULL[monIdx]} ${year}  ·  ${rows.length} movimientos totales`;
+
+  renderModalStats(rows, newRows, dupRows);
+  renderModalRows();
+  updateModalFooter();
+
+  document.getElementById('modal-bg').classList.add('open');
+  document.getElementById('modal-learn-bar').style.display = 'none';
+}
+
+function renderModalStats(rows, newRows, dupRows) {
+  const fmt = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).format(n) + '€';
+  const allNew = pendingImport.newRows;
+  const entradas = allNew.filter(r => r.importe > 0).reduce((s,r) => s + r.importe, 0);
+  const salidas  = Math.abs(allNew.filter(r => r.importe < 0).reduce((s,r) => s + r.importe, 0));
+  const lowConf  = allNew.filter(r => r.confidence === 'low').length;
+
+  document.getElementById('modal-stats-bar').innerHTML = `
+    <div class="mstat"><div class="mstat-label">Nuevos</div><div class="mstat-val" style="color:var(--green)">${newRows.length}</div></div>
+    <div class="mstat"><div class="mstat-label">Duplicados</div><div class="mstat-val" style="color:var(--ink-faint)">${dupRows.length}</div></div>
+    <div class="mstat"><div class="mstat-label">Entradas</div><div class="mstat-val" style="color:var(--green)">${fmt(entradas)}</div></div>
+    <div class="mstat"><div class="mstat-label">Salidas</div><div class="mstat-val" style="color:var(--red)">${fmt(salidas)}</div></div>
+    ${lowConf > 0 ? `<div class="mstat"><div class="mstat-label">⚠ Por revisar</div><div class="mstat-val" style="color:var(--amber)">${lowConf}</div></div>` : ''}
+  `;
+}
+
+function renderModalRows() {
+  const { rows, newRows, dupRows } = pendingImport;
+  const dupSet = new Set(dupRows.map(r => r.hash));
+
+  let filtered = rows;
+  if (modalFilter === 'low')  filtered = rows.filter(r => !dupSet.has(r.hash) && r.confidence === 'low');
+  if (modalFilter === 'new')  filtered = rows.filter(r => !dupSet.has(r.hash));
+  if (modalFilter === 'dup')  filtered = rows.filter(r =>  dupSet.has(r.hash));
+
+  const fmt = n => (n > 0 ? '+' : '') + new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n) + '€';
+
+  document.getElementById('modal-tbody').innerHTML = filtered.map(r => {
+    const isDup    = dupSet.has(r.hash);
+    const curCat   = editedRows[r.hash] ?? r.cat;
+    const isEdited = editedRows[r.hash] !== undefined;
+    const conf     = isEdited ? 'edited' : r.confidence;
+    const catDef   = CATEGORIES.find(c => c.id === curCat) || CATEGORIES[CATEGORIES.length-1];
+
+    const confHtml = conf === 'high'    ? `<span class="conf conf-high">✓ auto</span>`
+                   : conf === 'learned' ? `<span class="conf conf-learned">★ aprendido</span>`
+                   : conf === 'med'     ? `<span class="conf conf-med">~ probable</span>`
+                   : conf === 'edited'  ? `<span class="conf conf-learned">✎ editado</span>`
+                   :                     `<span class="conf conf-low">? revisar</span>`;
+
+    const rowClass = isDup ? 'is-dup' : (conf === 'low' && !isEdited) ? 'needs-review' : '';
+
+    // Category dropdown button
+    const catHtml = isDup ? `<span class="cat-pill-sm" style="background:${catDef.color};color:${catDef.text}">${catDef.label}</span>` : `
+      <div class="inline-cat">
+        <div class="cat-btn ${isEdited?'changed':''}" style="background:${catDef.color};color:${catDef.text}" onclick="toggleCatDD('${r.hash}')">
+          ${catDef.label} <span class="arr">▾</span>
+        </div>
+        <div class="cat-dd" id="dd-${r.hash}">
+          ${CATEGORIES.map(c => `
+            <div class="cat-dd-item ${c.id===curCat?'active':''}" onclick="setCatInModal('${r.hash}','${c.id}','${r.concepto.replace(/'/g,"\\'")}')">
+              <div class="cat-dd-dot" style="background:${c.color};border:1px solid ${c.text}30"></div>
+              ${c.label}
+            </div>`).join('')}
+        </div>
+      </div>`;
+
+    const conceptoShort = r.concepto.length > 55 ? r.concepto.slice(0,55) + '…' : r.concepto;
+
+    return `<tr class="${rowClass}" id="tr-${r.hash}">
+      <td class="mono" style="white-space:nowrap;font-size:11px;color:var(--ink-dim)">${r.fecha}</td>
+      <td style="font-size:11px" title="${r.concepto}">${conceptoShort}</td>
+      <td>${catHtml}</td>
+      <td style="text-align:center">${confHtml}</td>
+      <td class="mono" style="text-align:right;font-size:12px;${r.importe>0?'color:var(--green)':'color:var(--red)'}">${fmt(r.importe)}</td>
+      <td style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:${isDup?'var(--ink-faint)':'var(--green)'};font-weight:600">${isDup?'DUP':'NEW'}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:12px">Sin movimientos en esta vista</td></tr>`;
+}
+
+function toggleCatDD(hash) {
+  const dd = document.getElementById('dd-' + hash);
+  const isOpen = dd.classList.contains('open');
+  // close all
+  document.querySelectorAll('.cat-dd.open').forEach(d => d.classList.remove('open'));
+  if (!isOpen) dd.classList.add('open');
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.inline-cat')) {
+    document.querySelectorAll('.cat-dd.open').forEach(d => d.classList.remove('open'));
+  }
+});
+
+function setCatInModal(hash, newCat, concepto) {
+  editedRows[hash] = newCat;
+  document.querySelectorAll('.cat-dd.open').forEach(d => d.classList.remove('open'));
+  renderModalRows();
+  updateLearnBar();
+  updateModalFooter();
+}
+
+function updateLearnBar() {
+  const count = Object.keys(editedRows).length;
+  const bar = document.getElementById('modal-learn-bar');
+  if (count === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  bar.innerHTML = `★ ${count} corrección${count!==1?'es':''} — se guardarán como reglas de aprendizaje para futuros extractos`;
+}
+
+function updateModalFooter() {
+  const newCount = pendingImport.newRows.length;
+  const editCount = Object.keys(editedRows).length;
+  document.getElementById('modal-confirm-btn').textContent =
+    newCount > 0 ? `Confirmar ${newCount} movimientos →` : 'Sin movimientos nuevos (cerrar)';
+  document.getElementById('modal-footer-stats').textContent =
+    editCount > 0 ? `${editCount} categoría${editCount!==1?'s':''} corregida${editCount!==1?'s':''}` : '';
+}
+
+function closeModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+  pendingImport = null;
+  editedRows    = {};
+  document.getElementById('file-input-main').value = '';
+}
+
+function confirmImport() {
+  if (!pendingImport) return closeModal();
+  const { bank, filename, month, newRows, dupRows } = pendingImport;
+  if (newRows.length === 0) return closeModal();
+
+  // 1. Apply manual category corrections to newRows
+  const finalRows = newRows.map(r => ({
+    ...r,
+    cat: editedRows[r.hash] ?? r.cat,
+  }));
+
+  // 2. Save learned rules for every correction
+  Object.entries(editedRows).forEach(([hash, newCat]) => {
+    const row = newRows.find(r => r.hash === hash);
+    if (row) learnRule(row.concepto, newCat);
+  });
+
+  // 3. Save movements
+  const movsData = loadMovs();
+  if (!movsData[month]) movsData[month] = {};
+  finalRows.forEach(r => { movsData[month][r.hash] = r; });
+  saveMovs(movsData);
+
+  // 4. Save import record
+  const imports = loadImports();
+  imports.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+    bank, filename, month,
+    newCount: finalRows.length,
+    dupCount: dupRows.length,
+    editCount: Object.keys(editedRows).length,
+    uploadedAt: new Date().toISOString(),
+  });
+  saveImports(imports);
+
+  const learnedCount = Object.keys(editedRows).length;
+  closeModal();
+
+  showDedupToast(bank, filename, finalRows.length, dupRows.length, learnedCount);
+
+  // Refresh view
+  currentMonth = month;
+  document.querySelectorAll('.sidebar-item[id^=sb-]').forEach(el => el.classList.remove('active'));
+  document.getElementById('sb-' + month)?.classList.add('active');
+  updateSidebar();
+  renderMonth(month);
+}
+
+function showDedupToast(bank, filename, newCount, dupCount, learnedCount = 0) {
+  const toast = document.getElementById('dedup-toast');
+  toast.innerHTML = `
+    <div class="dedup-toast-title">✅ Importación completada — ${filename}</div>
+    <div class="dedup-row"><span class="dedup-key">Movimientos nuevos añadidos</span><span class="dedup-val" style="color:var(--green)">+${newCount}</span></div>
+    ${dupCount > 0 ? `<div class="dedup-row"><span class="dedup-key">Duplicados ignorados</span><span class="dedup-val" style="color:var(--ink-faint)">${dupCount}</span></div>` : ''}
+    ${learnedCount > 0 ? `<div class="dedup-row"><span class="dedup-key">Reglas de aprendizaje guardadas</span><span class="dedup-val" style="color:var(--blue)">★ ${learnedCount}</span></div>` : ''}
+  `;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 7000);
+}
+
+// ═══════════════════════════════════════════════
+// DELETE
+// ═══════════════════════════════════════════════
+function deleteImport(importId, monthKey) {
+  if (!confirm('¿Eliminar esta importación? Se borrarán sus movimientos del mes.')) return;
+
+  const imports = loadImports();
+  const imp = imports.find(i => i.id === importId);
+  if (!imp) return;
+
+  // We don't track per-import hashes separately, so we can't easily remove just those rows.
+  // Instead: remove the import record and warn user.
+  const newImports = imports.filter(i => i.id !== importId);
+  saveImports(newImports);
+
+  alert(`Registro de importación eliminado. Los movimientos individuales permanecen. Para limpiar el mes completo usa "Borrar todo".`);
+  renderMonth(monthKey);
+  updateSidebar();
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════
+function exportAll() {
+  const movsData = loadMovs();
+  const monthMovs = Object.values(movsData[currentMonth] || {});
+  if (!monthMovs.length) { alert('Sin movimientos para exportar'); return; }
+
+  const rows = [['Fecha','Concepto','Categoría','Importe','Tipo']];
+  monthMovs.sort((a,b) => (a.fecha||'').localeCompare(b.fecha||'')).forEach(m => {
+    rows.push([m.fecha, m.concepto, m.cat, m.importe, m.importe > 0 ? 'INGRESO' : 'GASTO']);
+  });
+
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `movimientos_${currentMonth}.csv`;
+  a.click();
+}
+
+function clearAll() {
+  localStorage.removeItem(STORE_KEY);
+  localStorage.removeItem(IMPORTS_KEY);
+  updateSidebar();
+  renderMonth(currentMonth);
+}
+
+// ═══════════════════════════════════════════════
+// PROCESSING UI
+// ═══════════════════════════════════════════════
+function showProcessing(msg) {
+  const bar = document.getElementById('processing-bar');
+  document.getElementById('processing-text').textContent = msg;
+  bar.classList.add('active');
+}
+function hideProcessing() {
+  document.getElementById('processing-bar').classList.remove('active');
+}
+
+// ═══════════════════════════════════════════════
+// PARSERS
+// ═══════════════════════════════════════════════
+function detectBank(filename, rows) {
+  const fn = filename.toLowerCase();
+  if (fn.includes('bbva')) return 'bbva';
+  if (fn.includes('sabadell')) return 'sabadell';
+  if (fn.includes('bankinter')) return 'bankinter';
+  if (fn.includes('caixa') || fn.includes('lacaixa')) return 'caixabank';
+  if (fn.includes('movimientoscuenta') || fn.includes('santander') || fn.includes('0049')) return 'santander';
+  return 'santander';
+}
+
+function parseXLSX(buffer) {
+  const wb = XLSX.read(new Uint8Array(buffer), { type:'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:null });
+
+  let headerRow = -1;
+  for (let i = 0; i < Math.min(raw.length, 15); i++) {
+    const rowStr = raw[i].filter(Boolean).join(' ').toLowerCase();
+    if (rowStr.includes('fecha operaci') || rowStr.includes('fecha valor') || rowStr.includes('concepto')) {
+      headerRow = i; break;
+    }
+  }
+  if (headerRow === -1) headerRow = 0;
+
+  const headers = raw[headerRow].map(h => (h||'').toString().trim().toLowerCase());
+  const iF = headers.findIndex(h => h.includes('fecha') && h.includes('operaci'));
+  const iFA = headers.findIndex(h => h.includes('fecha'));
+  const iC = headers.findIndex(h => h.includes('concepto'));
+  const iI = headers.findIndex(h => h.includes('importe'));
+
+  const rows = [];
+  for (let i = headerRow + 1; i < raw.length; i++) {
+    const row = raw[i];
+    if (!row || row.every(c => c === null || c === '')) continue;
+    let fecha = row[iF >= 0 ? iF : iFA >= 0 ? iFA : 0];
+    let concepto = row[iC >= 0 ? iC : 2];
+    let importe = row[iI >= 0 ? iI : 3];
+    if (typeof importe === 'string') importe = parseFloat(importe.replace(/\./g,'').replace(',','.'));
+    else importe = parseFloat(importe);
+    if (isNaN(importe)) continue;
+    if (fecha instanceof Date) fecha = fecha.toLocaleDateString('es-ES');
+    else if (typeof fecha === 'number') fecha = new Date(Math.round((fecha-25569)*86400000)).toLocaleDateString('es-ES');
+    else fecha = (fecha||'').toString().trim();
+    if (!fecha || !concepto) continue;
+    rows.push({ fecha: fecha.trim(), concepto: (concepto||'').toString().trim(), importe });
+  }
+  return rows;
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  const delim = lines[0].includes(';') ? ';' : '\t';
+  let headerRow = -1;
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    const low = lines[i].toLowerCase();
+    if (low.includes('fecha') || low.includes('concepto')) { headerRow = i; break; }
+  }
+  if (headerRow === -1) headerRow = 0;
+
+  const headers = lines[headerRow].split(delim).map(h => h.replace(/"/g,'').trim().toLowerCase());
+  const iF = headers.findIndex(h => h.includes('fecha') && h.includes('operaci'));
+  const iFA = headers.findIndex(h => h.includes('fecha'));
+  const iC = headers.findIndex(h => h.includes('concepto') || h.includes('descripci'));
+  const iI = headers.findIndex(h => h.includes('importe') || h.includes('movimiento'));
+  const iD = headers.findIndex(h => h.includes('debe'));
+  const iH = headers.findIndex(h => h.includes('haber'));
+
+  const rows = [];
+  for (let i = headerRow + 1; i < lines.length; i++) {
+    const cols = lines[i].split(delim).map(c => c.replace(/"/g,'').trim());
+    if (cols.length < 2) continue;
+    const fecha    = cols[iF >= 0 ? iF : iFA >= 0 ? iFA : 0] || '';
+    const concepto = cols[iC >= 0 ? iC : 1] || '';
+    let importe;
+    if (iI >= 0) importe = parseFloat((cols[iI]||'0').replace(/\./g,'').replace(',','.'));
+    else if (iD >= 0 && iH >= 0) {
+      const debe  = parseFloat((cols[iD]||'0').replace(/\./g,'').replace(',','.')) || 0;
+      const haber = parseFloat((cols[iH]||'0').replace(/\./g,'').replace(',','.')) || 0;
+      importe = haber - debe;
+    } else continue;
+    if (!fecha || !concepto || isNaN(importe)) continue;
+    rows.push({ fecha: fecha.trim(), concepto: concepto.trim(), importe });
+  }
+  return rows;
+}
+
+// ═══════════════════════════════════════════════
+// MOVIMIENTOS LIST — post-import editing
+// ═══════════════════════════════════════════════
+function renderMovsList() {
+  const movsData  = loadMovs();
+  const monthMovs = Object.values(movsData[currentMonth] || {});
+  const search    = (document.getElementById('movs-search')?.value || '').toLowerCase();
+  const tipoFil   = document.getElementById('movs-tipo')?.value || '';
+  const catFil    = document.getElementById('movs-cat')?.value  || '';
+
+  // Populate cat filter
+  const allCats = [...new Set(monthMovs.map(m => m.cat))].sort();
+  const catSel  = document.getElementById('movs-cat');
+  if (catSel) {
+    const curVal = catSel.value;
+    catSel.innerHTML = '<option value="">Todas las categorías</option>' +
+      allCats.map(c => `<option value="${c}" ${c===curVal?'selected':''}>${c}</option>`).join('');
+  }
+
+  let filtered = monthMovs.filter(m => {
+    if (search && !m.concepto.toLowerCase().includes(search)) return false;
+    if (tipoFil && (tipoFil === 'INGRESO' ? m.importe < 0 : m.importe > 0)) return false;
+    if (catFil  && m.cat !== catFil) return false;
+    return true;
+  }).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+
+  const fmt = n => (n>0?'+':'')+new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+'€';
+
+  if (!filtered.length) {
+    document.getElementById('movs-tbody').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:12px">${monthMovs.length ? 'Sin resultados para este filtro' : 'Sin movimientos para este mes'}</td></tr>`;
+    return;
+  }
+
+  document.getElementById('movs-tbody').innerHTML = filtered.map(m => {
+    const catDef = CATEGORIES.find(c => c.id === m.cat) || CATEGORIES[CATEGORIES.length-1];
+    const conceptoShort = m.concepto.length > 52 ? m.concepto.slice(0,52)+'…' : m.concepto;
+    return `<tr id="movrow-${m.hash}">
+      <td class="td-fecha">${m.fecha}</td>
+      <td style="font-size:11px" title="${m.concepto}">${conceptoShort}</td>
+      <td>
+        <div class="inline-cat">
+          <div class="cat-btn" style="background:${catDef.color};color:${catDef.text}" onclick="toggleMovCatDD('${m.hash}')">
+            ${catDef.label} <span class="arr">▾</span>
+          </div>
+          <div class="cat-dd" id="movdd-${m.hash}">
+            ${CATEGORIES.map(c => `
+              <div class="cat-dd-item ${c.id===m.cat?'active':''}" onclick="editMovCat('${m.hash}','${c.id}','${currentMonth}','${m.concepto.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+                <div class="cat-dd-dot" style="background:${c.color};border:1px solid ${c.text}30"></div>
+                ${c.label}
+              </div>`).join('')}
+          </div>
+        </div>
+      </td>
+      <td class="td-amount ${m.importe>0?'pos':'neg'}">${fmt(m.importe)}</td>
+      <td style="text-align:center">
+        ${m.manualCat ? '<span title="Categoría editada manualmente" style="font-size:13px">✎</span>' : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleMovCatDD(hash) {
+  const dd = document.getElementById('movdd-' + hash);
+  const isOpen = dd.classList.contains('open');
+  document.querySelectorAll('.cat-dd.open').forEach(d => d.classList.remove('open'));
+  if (!isOpen) dd.classList.add('open');
+}
+
+function editMovCat(hash, newCat, monthKey, concepto) {
+  // Close dropdown
+  document.querySelectorAll('.cat-dd.open').forEach(d => d.classList.remove('open'));
+
+  // Update in storage
+  const movsData = loadMovs();
+  if (!movsData[monthKey] || !movsData[monthKey][hash]) return;
+  movsData[monthKey][hash].cat       = newCat;
+  movsData[monthKey][hash].manualCat = true;
+  saveMovs(movsData);
+
+  // Learn the rule
+  learnRule(concepto, newCat);
+
+  // Re-render list and stats
+  renderMovsList();
+  renderMonth(monthKey);
+
+  // Flash feedback
+  const row = document.getElementById('movrow-' + hash);
+  if (row) {
+    row.style.background = 'var(--green-bg)';
+    setTimeout(() => { row.style.background = ''; }, 1200);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// LEARNED RULES VIEWER
+// ═══════════════════════════════════════════════
+function showLearnedRules() {
+  const rules = loadCustomRules();
+  if (!rules.length) { alert('Aún no hay reglas aprendidas. Corrige categorías al importar y se guardarán aquí.'); return; }
+
+  const html = rules.map((r, i) => `
+    <tr>
+      <td style="font-size:11px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.concepto}">${r.concepto}</td>
+      <td><span class="cat-pill-sm" style="background:${(CATEGORIES.find(c=>c.id===r.cat)||CATEGORIES[CATEGORIES.length-1]).color};color:${(CATEGORIES.find(c=>c.id===r.cat)||CATEGORIES[CATEGORIES.length-1]).text}">${r.cat}</span></td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint)">${new Date(r.createdAt).toLocaleDateString('es-ES')}</td>
+      <td><span style="cursor:pointer;color:var(--red);font-size:12px;padding:2px 6px" onclick="deleteLearnedRule(${i})">×</span></td>
+    </tr>`).join('');
+
+  document.getElementById('modal-title').textContent = `★ Reglas aprendidas (${rules.length})`;
+  document.getElementById('modal-sub').textContent = 'Se aplican automáticamente en futuros extractos. Click × para eliminar.';
+  document.getElementById('modal-stats-bar').innerHTML = '';
+  document.getElementById('modal-learn-bar').style.display = 'none';
+  document.getElementById('modal-footer-stats').textContent = '';
+  document.getElementById('modal-confirm-btn').textContent = 'Cerrar';
+  document.getElementById('modal-confirm-btn').onclick = closeLearnedModal;
+  document.getElementById('modal-filter-chips').style.display = 'none';
+
+  document.getElementById('modal-tbody').innerHTML = html;
+  document.getElementById('modal-bg').classList.add('open');
+
+  // Override table headers
+  document.querySelector('.modal-tbl thead tr').innerHTML = `
+    <th>Concepto (patrón aprendido)</th><th>Categoría asignada</th><th>Fecha</th><th></th>`;
+}
+
+function closeLearnedModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+  document.getElementById('modal-confirm-btn').onclick = confirmImport;
+  document.querySelector('.modal-tbl thead tr').innerHTML = `
+    <th style="width:85px">Fecha</th><th>Concepto</th><th style="width:200px">Categoría</th>
+    <th style="width:60px;text-align:center">Conf.</th><th style="width:100px;text-align:right">Importe</th>
+    <th style="width:60px;text-align:center">Estado</th>`;
+  document.getElementById('modal-filter-chips').style.display = 'flex';
+}
+
+function deleteLearnedRule(idx) {
+  const rules = loadCustomRules();
+  rules.splice(idx, 1);
+  saveCustomRules(rules);
+  showLearnedRules();
+}
+
+// ═══════════════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════════════
+const uz = document.getElementById('upload-zone');
+uz.addEventListener('dragover',  e => { e.preventDefault(); uz.classList.add('dragover'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('dragover'));
+uz.addEventListener('drop', e => {
+  e.preventDefault();
+  uz.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+</script>
+</body>
+</html>
