@@ -561,7 +561,7 @@ function saveProjection() {
 }
 
 // ══════════════════════════════════════════════════════
-// REAL PANEL — reads from gestor_importaciones movs
+// REAL PANEL — gauge visual design
 // ══════════════════════════════════════════════════════
 function renderRealPanel(idx, proj) {
   const panel = document.getElementById('real-panel');
@@ -575,18 +575,17 @@ function renderRealPanel(idx, proj) {
     return;
   }
 
-  const key     = `${MONTHS[idx]}-${YEAR}`;
-  const movsData = loadMovs();
+  const key       = `${MONTHS[idx]}-${YEAR}`;
+  const movsData  = loadMovs();
   const monthMovs = Object.values(movsData[key] || {});
+  const realCobros = monthMovs.filter(m => m.cat === 'ENTRADAS' && m.importe > 0)
+                               .reduce((s,m) => s + m.importe, 0);
+  const previsto  = proj.total || 0;
+  const pct       = previsto > 0 ? realCobros / previsto : 0;
+  const superado  = pct >= 1;
+  const desv      = realCobros - previsto;
 
-  // Real cobros = all ENTRADAS category movements
-  const realCobros  = monthMovs.filter(m => m.cat === 'ENTRADAS' && m.importe > 0)
-                                .reduce((s,m) => s + m.importe, 0);
-  const totalEntradas = monthMovs.filter(m => m.importe > 0).reduce((s,m) => s + m.importe, 0);
-  const previsto    = proj.total || 0;
-  const pct         = previsto > 0 ? realCobros / previsto : 0;
-
-  // Weekly breakdown of cobros
+  // Weekly breakdown
   const byWeek = {};
   monthMovs.filter(m => m.cat === 'ENTRADAS' && m.importe > 0).forEach(m => {
     const d = parseDate(m.fecha);
@@ -594,110 +593,120 @@ function renderRealPanel(idx, proj) {
     const wk = getWeekLabel(d);
     byWeek[wk] = (byWeek[wk] || 0) + m.importe;
   });
+  const weekEntries = Object.entries(byWeek).sort();
+  const maxWeek = Math.max(...weekEntries.map(([,v]) => v), 1);
 
-  const fmt = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+  const fmt    = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0}).format(Math.round(n));
   const fmtPct = p => (p*100).toFixed(1) + '%';
 
-  const pctColor = pct >= 1 ? 'var(--blue)' : pct >= 0.75 ? 'var(--green)' : pct >= 0.5 ? 'var(--amber)' : 'var(--red)';
-  const barClass = pct >= 1 ? 'over' : pct >= 0.75 ? 'green' : pct >= 0.5 ? 'amber' : 'red';
-  const barW = Math.min(pct * 100, 100).toFixed(1);
+  // Gauge needle angle: -90° = 0%, 0° = 50%, +90° = 100%, cap at ~110%
+  const needleDeg  = -90 + Math.min(pct, 1.1) * 180;
+  // Arc fill: percentage of the semicircle
+  const circumference = 251.3;
+  const arcFill    = Math.min(pct, 1) * circumference;
 
-  // desglose section by origin
-  const cobroFraReal  = Math.min(realCobros, proj.cobroFra);   // approximate
-  const restReal      = Math.max(0, realCobros - proj.cobroFra);
+  // Colors
+  const LP_BLUE       = '#1a4a8a';
+  const LP_BLUE_MID   = '#2563c4';
+  const LP_BLUE_LIGHT = '#dbeafe';
+  const accentColor   = superado ? '#1a7a4a' : LP_BLUE_MID;
+  const bgCard        = superado ? '#f0faf4' : '#ffffff';
+  const borderCard    = superado ? '#a8d8bc' : 'var(--border)';
+  const barColor      = pct >= 1 ? '#1a7a4a' : pct >= 0.75 ? LP_BLUE_MID : pct >= 0.5 ? '#b5620a' : '#c0392b';
+  const barW          = Math.min(pct * 100, 100).toFixed(1);
+  const nCobros       = monthMovs.filter(m => m.cat === 'ENTRADAS' && m.importe > 0).length;
 
   panel.innerHTML = `
-    <!-- KPI boxes -->
-    <div class="kpi-grid">
-      <div class="kpi-box accent-blue">
-        <div class="kpi-label">Previsto Total</div>
-        <div class="kpi-val">${fmt(previsto)}€</div>
-        <div class="kpi-sub">Proyección del mes</div>
+    <!-- KPI row: 3 boxes -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="kpi-box" style="border-left:3px solid ${LP_BLUE};background:${LP_BLUE_LIGHT}">
+        <div class="kpi-label">Previsto ${MONTHS_F[idx].toLowerCase()}</div>
+        <div class="kpi-val" style="color:${LP_BLUE}">${fmt(previsto)}€</div>
+        <div class="kpi-sub">proyección del mes</div>
       </div>
-      <div class="kpi-box ${pct>=1?'accent-blue':pct>=0.75?'accent-green':pct>=0.5?'accent-amber':'accent-red'}">
-        <div class="kpi-label">Cobrado Real</div>
-        <div class="kpi-val" style="color:${pctColor}">${fmt(realCobros)}€</div>
-        <div class="kpi-sub">${monthMovs.filter(m=>m.cat==='ENTRADAS'&&m.importe>0).length} cobros registrados</div>
+      <div class="kpi-box" style="border-left:3px solid ${accentColor};background:${bgCard};border-color:${borderCard}">
+        <div class="kpi-label">Cobrado real</div>
+        <div class="kpi-val" style="color:${accentColor}">${realCobros > 0 ? fmt(realCobros)+'€' : '—'}</div>
+        <div class="kpi-sub">de los extractos</div>
+      </div>
+      <div class="kpi-box" style="border-left:3px solid ${accentColor};background:${bgCard};border-color:${borderCard}">
+        <div class="kpi-label">Pendiente</div>
+        <div class="kpi-val" style="color:${accentColor}">${superado ? '+' : ''}${fmt(desv)}€</div>
+        <div class="kpi-sub">${superado ? 'por encima del previsto' : 'pendiente de cobrar'}</div>
       </div>
     </div>
 
-    <!-- Progress bar -->
-    <div class="progress-card">
-      <div class="progress-title">
-        <span>Progreso de cobros</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:${pctColor}">${fmtPct(pct)}</span>
-      </div>
-      <div class="prog-row">
-        <div class="prog-header">
-          <span class="prog-label">Cobros de clientes vs previsto</span>
-          <div class="prog-vals">
-            <span class="prog-real">${fmt(realCobros)}€</span>
-            <span class="prog-prev">/ ${fmt(previsto)}€</span>
+    <!-- GAUGE CARD — single column -->
+    <div class="progress-card" style="background:${bgCard};border:1px solid ${borderCard}">
+
+      <!-- Gauge centrado -->
+      <div style="display:flex;justify-content:center;margin-bottom:16px">
+        <div style="position:relative;width:240px;height:134px">
+          <svg width="240" height="134" viewBox="0 0 240 134" overflow="visible">
+            <path d="M 20 115 A 100 100 0 0 1 220 115"
+              fill="none" stroke="${superado?'#a8d8bc':'#dddcd6'}" stroke-width="14" stroke-linecap="round"/>
+            <path d="M 20 115 A 100 100 0 0 1 220 115"
+              fill="none" stroke="${accentColor}" stroke-width="14" stroke-linecap="round"
+              stroke-dasharray="314.2" stroke-dashoffset="${(314.2 - Math.min(pct,1)*314.2).toFixed(1)}"/>
+            <line x1="120" y1="115" x2="120" y2="28"
+              stroke="${accentColor}" stroke-width="2.5" stroke-linecap="round"
+              transform="rotate(${(-90 + Math.min(pct,1.1)*180).toFixed(1)}, 120, 115)"/>
+            <circle cx="120" cy="115" r="5" fill="${accentColor}"/>
+            <text x="14" y="132" font-size="10" fill="#a8a8a2" font-family="IBM Plex Mono,monospace">0%</text>
+            <text x="120" y="24" font-size="10" fill="#a8a8a2" font-family="IBM Plex Mono,monospace" text-anchor="middle">50%</text>
+            <text x="226" y="132" font-size="10" fill="#a8a8a2" font-family="IBM Plex Mono,monospace" text-anchor="end">100%</text>
+          </svg>
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:${accentColor};line-height:1">${realCobros>0?fmtPct(pct):'—'}</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#a8a8a2;margin-top:2px">del previsto</div>
           </div>
         </div>
-        <div class="prog-track">
-          <div class="prog-fill ${barClass}" style="width:${barW}%"></div>
-        </div>
       </div>
-      <div class="prog-row">
-        <div class="prog-header">
-          <span class="prog-label">Cobro facturas mes anterior (prev. ${fmt(proj.cobroFra)}€)</span>
-          <div class="prog-vals">
-            <span class="prog-real">${fmt(cobroFraReal)}€</span>
-          </div>
-        </div>
-        <div class="prog-track">
-          <div class="prog-fill ${proj.cobroFra>0?barClass:'green'}" style="width:${proj.cobroFra>0?Math.min(cobroFraReal/proj.cobroFra*100,100).toFixed(1):0}%"></div>
-        </div>
-      </div>
-      ${proj.diferencia > 0 ? `
-      <div class="prog-row">
-        <div class="prog-header">
-          <span class="prog-label">Cobro meses anteriores (prev. ${fmt(proj.diferencia)}€)</span>
-          <div class="prog-vals"><span class="prog-real">${fmt(Math.min(restReal,proj.diferencia))}€</span></div>
-        </div>
-        <div class="prog-track">
-          <div class="prog-fill amber" style="width:${proj.diferencia>0?Math.min(restReal/proj.diferencia*100,100).toFixed(1):0}%"></div>
-        </div>
-      </div>` : ''}
-    </div>
 
-    <!-- Pending -->
-    ${previsto > 0 && realCobros < previsto ? `
-    <div class="alert ${pct >= 0.75 ? 'success' : 'warn'}">
-      <span class="alert-icon">${pct >= 0.75 ? '✓' : '⚠'}</span>
-      <span>Pendiente de cobrar: <strong>${fmt(previsto - realCobros)}€</strong> (${fmtPct(1-pct)} del previsto)</span>
-    </div>` : pct >= 1 ? `
-    <div class="alert success">
-      <span class="alert-icon">🎉</span>
-      <span>Cobros por encima del previsto: <strong>+${fmt(realCobros - previsto)}€</strong></span>
-    </div>` : ''}
-
-    <!-- Weekly breakdown -->
-    <div class="weekly-card">
-      <div class="weekly-card-header">
-        <span class="weekly-card-title">Cobros por semana</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint)">${monthMovs.filter(m=>m.importe>0).length} mov. totales este mes</span>
+      <!-- Barra de progreso -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b6b65;margin-bottom:6px">
+          <span>${fmt(realCobros)}€ cobrado</span>
+          <span>${fmt(previsto)}€ previsto</span>
+        </div>
+        <div style="height:8px;background:#e8e7e0;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${barW}%;background:${barColor};border-radius:4px;transition:width .8s ease"></div>
+        </div>
       </div>
-      ${Object.keys(byWeek).length > 0 ? `
-      <table class="weekly-tbl">
-        <thead><tr><th>Semana</th><th style="text-align:right">Cobros</th><th style="text-align:right">% sobre previsto</th></tr></thead>
-        <tbody>
-          ${Object.entries(byWeek).sort().map(([wk, amt]) => `
-            <tr>
-              <td>${wk}</td>
-              <td class="mono" style="text-align:right;color:var(--green)">${fmt(amt)}€</td>
-              <td style="text-align:right">
-                <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim)">${previsto>0?fmtPct(amt/previsto):'—'}</span>
-              </td>
-            </tr>`).join('')}
-          <tr style="border-top:2px solid var(--border);font-weight:700">
-            <td>TOTAL</td>
-            <td class="mono" style="text-align:right;color:var(--green)">${fmt(realCobros)}€</td>
-            <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${pctColor}">${fmtPct(pct)}</td>
-          </tr>
-        </tbody>
-      </table>` : `<div style="padding:24px;text-align:center;color:var(--ink-faint);font-size:12px">Sin cobros registrados aún para este mes.<br>Importa extractos bancarios para ver el seguimiento.</div>`}
+
+      <!-- Weekly bars -->
+      ${weekEntries.length > 0 ? `
+      <div style="border-top:1px solid var(--border);padding-top:16px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#a8a8a2;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Cobros por semana</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;height:80px">
+          ${weekEntries.map(([wk, amt]) => {
+            const h = Math.max(Math.round((amt / maxWeek) * 64), 4);
+            const opacity = (0.45 + (amt / maxWeek) * 0.55).toFixed(2);
+            const shortLbl = wk.replace('Sem. ','Sem ').split(' ').slice(0,2).join(' ');
+            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#6b6b65">${Math.round(amt/1000)}k€</div>
+              <div style="width:100%;height:${h}px;background:${accentColor};opacity:${opacity};border-radius:2px 2px 0 0"></div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#a8a8a2">${shortLbl}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : `
+      <div style="border-top:1px solid var(--border);padding:20px 0 4px;text-align:center;font-size:12px;color:#a8a8a2">
+        Sin cobros registrados aún. Importa extractos para ver el seguimiento.
+      </div>`}
+
+      <!-- Alert -->
+      <div style="margin-top:16px;padding:10px 14px;border-radius:3px;font-size:12px;display:flex;align-items:center;gap:8px;
+        background:${superado?'#e8f5ee':pct>=0.75?'#eef3fc':pct>=0.5?'#fef6ec':'#fdf0ee'};
+        color:${superado?'#1a7a4a':pct>=0.75?'#1a4a8a':pct>=0.5?'#b5620a':'#c0392b'}">
+        ${superado
+          ? `✓ Cobros por encima del previsto en +${fmt(desv)}€ · ratio de éxito ${fmtPct(pct)}`
+          : pct >= 0.75
+          ? `Buen ritmo · Pendiente de cobrar: ${fmt(Math.abs(desv))}€ (${fmtPct(1-pct)} restante)`
+          : pct > 0
+          ? `⚠ Cobros al ${fmtPct(pct)} del previsto · Pendiente: ${fmt(Math.abs(desv))}€`
+          : `Sin cobros registrados para este mes`}
+      </div>
     </div>
   `;
 }
