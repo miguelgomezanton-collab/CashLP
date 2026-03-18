@@ -7,366 +7,233 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #f5f4f0;
-  --surface: #ffffff;
-  --surface2: #f0efe9;
-  --border: #dddcd6;
-  --border-strong: #b8b7b0;
-  --ink: #1a1a18;
-  --ink-dim: #6b6b65;
-  --ink-faint: #a8a8a2;
-  --green: #1a7a4a;
-  --green-bg: #e8f5ee;
-  --green-border: #a8d8bc;
-  --red: #c0392b;
-  --red-bg: #fdf0ee;
-  --amber: #b5620a;
-  --amber-bg: #fef6ec;
-  --blue: #1a4a8a;
-  --blue-bg: #eef3fc;
+  --bg:#0e0e12; --surface:#16161c; --surface2:#1e1e26; --surface3:#26262f;
+  --border:#2a2a35; --border-light:#32323e;
+  --ink:#eeeef2; --ink-dim:#8888a0; --ink-faint:#44445a;
+  --green:#4ade80; --green-bg:rgba(74,222,128,.08);
+  --red:#f87171; --amber:#fbbf24; --blue:#60a5fa;
+  --accent:#4ade80;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',sans-serif; font-size:14px; min-height:100vh; display:flex; flex-direction:column; }
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
 
-/* NAV */
-nav {
-  background:var(--ink); color:white; padding:0 40px; height:56px;
-  display:flex; align-items:center; justify-content:space-between;
-  position:sticky; top:0; z-index:200;
-}
-.nav-brand {
-  font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:600;
-  letter-spacing:.06em; display:flex; align-items:center; gap:12px;
-}
-.nav-dot { width:8px; height:8px; border-radius:50%; background:#4ade80; }
-.nav-right {
-  font-family:'IBM Plex Mono',monospace; font-size:10px;
-  color:rgba(255,255,255,.35); display:flex; align-items:center; gap:20px;
-}
-.nav-status { display:flex; align-items:center; gap:6px; }
-.status-dot { width:5px; height:5px; border-radius:50%; background:#4ade80; }
+header{padding:44px 56px 0;display:flex;align-items:flex-end;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent);flex-shrink:0}
+.brand-name{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;letter-spacing:.04em}
+.brand-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+.hdr-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-faint);text-align:right;line-height:2}
+.hdr-meta strong{color:var(--ink-dim)}
 
-/* HERO */
-.hero {
-  background:var(--ink); color:white;
-  padding:48px 40px 40px;
-  border-bottom:1px solid #2a2a28;
-}
-.hero-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:1px; background:#2a2a28; border:1px solid #2a2a28; border-radius:4px; overflow:hidden; margin-top:28px; }
-.hero-stat { background:#111110; padding:20px 24px; }
-.hero-stat-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.35); margin-bottom:8px; }
-.hero-stat-val { font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:700; line-height:1; }
-.hero-stat-sub { font-family:'IBM Plex Mono',monospace; font-size:10px; color:rgba(255,255,255,.35); margin-top:4px; }
-.hero-title { font-size:13px; font-weight:400; color:rgba(255,255,255,.5); letter-spacing:.02em; margin-bottom:4px; font-family:'IBM Plex Mono',monospace; }
-.hero-month { font-size:28px; font-weight:700; line-height:1; }
+.divider{height:1px;background:var(--border);margin:32px 56px 0;position:relative}
+.divider::after{content:'';position:absolute;left:0;top:0;width:80px;height:1px;background:var(--accent)}
 
-/* MAIN GRID */
-.main-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:28px 40px; flex:1; max-width:1400px; width:100%; margin:0 auto; }
+.sec-label{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);padding:28px 56px 14px;display:flex;align-items:center;gap:16px}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
 
-/* MODULE CARDS */
-.module-card {
-  background:var(--surface); border:1px solid var(--border); border-radius:6px;
-  overflow:hidden; display:flex; flex-direction:column;
-  transition:box-shadow .2s, border-color .2s;
-  cursor:pointer; text-decoration:none; color:inherit;
-}
-.module-card:hover { border-color:var(--border-strong); box-shadow:0 4px 20px rgba(0,0,0,.08); }
+.grid{padding:0 56px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 
-.module-card-header { padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; }
-.module-icon { font-size:24px; margin-bottom:10px; display:block; }
-.module-title { font-size:16px; font-weight:700; margin-bottom:4px; }
-.module-desc { font-size:12px; color:var(--ink-dim); line-height:1.5; }
-.module-arrow { font-size:20px; color:var(--ink-faint); margin-top:2px; }
+.card{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;text-decoration:none;color:inherit;display:flex;flex-direction:column;transition:border-color .2s,background .2s,transform .15s;position:relative;cursor:pointer}
+.card:hover{border-color:var(--border-light);background:var(--surface2);transform:translateY(-2px)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ca,var(--border));opacity:0;transition:opacity .2s}
+.card:hover::before{opacity:1}
+.card.coming{opacity:.38;pointer-events:none}
 
-.module-card-body { padding:16px 24px; flex:1; }
-.module-card-footer { padding:12px 24px; border-top:1px solid var(--border); background:var(--surface2); display:flex; align-items:center; justify-content:space-between; }
-.module-footer-label { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-faint); }
-.module-footer-action { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink); font-weight:600; display:flex; align-items:center; gap:4px; }
+.card-inner{padding:24px 24px 20px;flex:1;display:flex;flex-direction:column}
+.card-num{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.12em;color:var(--ink-faint);margin-bottom:14px}
+.card-icon{font-size:26px;margin-bottom:12px;display:block}
+.card-title{font-size:15px;font-weight:700;line-height:1.2;margin-bottom:6px}
+.card-desc{font-size:12px;color:var(--ink-dim);line-height:1.6;flex:1;margin-bottom:16px}
+.soon-badge{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;padding:2px 7px;border-radius:2px;background:var(--surface3);color:var(--ink-faint);letter-spacing:.08em;display:inline-block;margin-bottom:10px}
 
-/* MODULE STATS */
-.mod-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-.mod-stat { background:var(--surface2); border:1px solid var(--border); border-radius:3px; padding:10px 12px; }
-.mod-stat-label { font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:4px; }
-.mod-stat-val { font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:700; }
+.stats{display:flex;gap:8px;margin-bottom:16px}
+.stat{flex:1;background:var(--surface3);border-radius:3px;padding:8px 10px}
+.stat-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:3px}
+.stat-val{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700}
 
-/* MINI PROGRESS */
-.mini-progress { margin-top:12px; }
-.mini-progress-header { display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:5px; }
-.mini-progress-label { color:var(--ink-dim); }
-.mini-progress-val { font-weight:600; }
-.mini-prog-track { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
-.mini-prog-fill { height:100%; border-radius:3px; transition:width .6s ease; }
+.card-footer{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;padding:10px 0 0;border-top:1px solid var(--border)}
+.pill{padding:2px 8px;border-radius:2px;font-size:9px;font-weight:600;letter-spacing:.04em}
+.pill-on{background:var(--green-bg);color:var(--green)}
+.pill-off{background:rgba(136,136,160,.1);color:var(--ink-faint)}
+.f-text{color:var(--ink-faint);flex:1}
+.f-arrow{color:var(--ink-faint);transition:color .15s;margin-left:auto}
+.card:hover .f-arrow{color:var(--ink)}
 
-/* RECENT LIST */
-.recent-list { display:flex; flex-direction:column; gap:6px; }
-.recent-item { display:flex; align-items:center; gap:10px; padding:8px 10px; background:var(--surface2); border-radius:3px; font-size:12px; }
-.recent-item-bank { font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:600; padding:2px 6px; border-radius:2px; flex-shrink:0; }
-.recent-item-name { flex:1; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.recent-item-count { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-faint); }
-.recent-item-date { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--ink-faint); flex-shrink:0; }
+footer{margin-top:auto;padding:24px 56px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.f-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint);display:flex;align-items:center;gap:8px}
+.f-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
 
-/* ALERT STRIP */
-.alert-strip { background:var(--amber-bg); border-bottom:1px solid var(--amber-border); padding:10px 40px; display:flex; align-items:center; gap:10px; font-size:12px; color:var(--amber); }
-.alert-strip.hidden { display:none; }
-
-/* BANK PILLS */
-.bp-santander { background:#ffeef0; color:#c0001e; }
-.bp-bbva      { background:#eef2ff; color:#1a4ab0; }
-.bp-sabadell  { background:#eef9ff; color:#006699; }
-.bp-bankinter { background:#fff0ee; color:#c0390a; }
-.bp-caixabank { background:#fff8e8; color:#8a6000; }
-.bp-unknown   { background:var(--surface2); color:var(--ink-dim); }
-
-/* EMPTY */
-.empty-mod { text-align:center; padding:24px 16px; color:var(--ink-faint); font-size:12px; }
-.empty-mod-icon { font-size:28px; margin-bottom:8px; }
-
-/* FOOTER */
-footer { padding:16px 40px; border-top:1px solid var(--border); background:var(--surface); display:flex; justify-content:space-between; align-items:center; }
-.footer-label { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-faint); }
+@media(max-width:960px){.grid{grid-template-columns:repeat(2,1fr);padding:0 24px}header,.divider,.sec-label,footer{padding-left:24px;padding-right:24px}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
-<nav>
-  <div class="nav-brand">
-    <div class="nav-dot"></div>
-    LPCASH
-  </div>
-  <div class="nav-right">
-    <div class="nav-status"><div class="status-dot"></div><span id="nav-movs">Cargando...</span></div>
-    <span id="nav-date"></span>
-  </div>
-</nav>
-
-<!-- ALERT STRIP -->
-<div class="alert-strip" id="alert-strip">
-  <span>⚠</span>
-  <span id="alert-text"></span>
-</div>
-
-<!-- HERO -->
-<div class="hero">
-  <div class="hero-title">RESUMEN DEL MES ACTUAL</div>
-  <div class="hero-month" id="hero-month">—</div>
-  <div class="hero-grid">
-    <div class="hero-stat">
-      <div class="hero-stat-label">Cobros reales</div>
-      <div class="hero-stat-val" id="h-cobros" style="color:#4ade80">—</div>
-      <div class="hero-stat-sub" id="h-cobros-sub">Sin datos</div>
-    </div>
-    <div class="hero-stat">
-      <div class="hero-stat-label">Previsto cobros</div>
-      <div class="hero-stat-val" id="h-previsto">—</div>
-      <div class="hero-stat-sub">Proyección del mes</div>
-    </div>
-    <div class="hero-stat">
-      <div class="hero-stat-label">% Cumplimiento</div>
-      <div class="hero-stat-val" id="h-pct" style="color:#4ade80">—</div>
-      <div class="hero-stat-sub" id="h-pct-sub">—</div>
-    </div>
-    <div class="hero-stat">
-      <div class="hero-stat-label">Movimientos importados</div>
-      <div class="hero-stat-val" id="h-movs">—</div>
-      <div class="hero-stat-sub" id="h-movs-sub">Este mes</div>
+<header>
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <div>
+      <div class="brand-name">LPCash</div>
+      <div class="brand-sub">Legal Pigeon · Gestión de Caja</div>
     </div>
   </div>
-</div>
+  <div class="hdr-meta">
+    <div id="hdr-date">—</div>
+    <div id="hdr-movs">— movimientos guardados</div>
+  </div>
+</header>
 
-<!-- MAIN MODULES GRID -->
-<div class="main-grid">
+<div class="divider"></div>
 
-  <!-- IMPORTACIONES -->
-  <a class="module-card" href="gestor_importaciones.html">
-    <div class="module-card-header">
-      <div>
-        <span class="module-icon">🏦</span>
-        <div class="module-title">Extractos Bancarios</div>
-        <div class="module-desc">Sube y categoriza los extractos semanales de todos tus bancos. Deduplicación automática.</div>
+<div class="sec-label">Módulos activos</div>
+
+<div class="grid">
+
+  <a class="card" href="gestor_importaciones.html" style="--ca:#4ade80">
+    <div class="card-inner">
+      <div class="card-num">01</div>
+      <span class="card-icon">🏦</span>
+      <div class="card-title">Extractos Bancarios</div>
+      <div class="card-desc">Sube los extractos semanales de todos los bancos. Categorización automática con aprendizaje y deduplicación.</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-lbl">Este mes</div><div class="stat-val" id="s-mes">—</div></div>
+        <div class="stat"><div class="stat-lbl">Total año</div><div class="stat-val" id="s-anio">—</div></div>
+        <div class="stat"><div class="stat-lbl">Bancos</div><div class="stat-val" id="s-banks">—</div></div>
       </div>
-      <div class="module-arrow">→</div>
-    </div>
-    <div class="module-card-body">
-      <div class="mod-stats" style="margin-bottom:12px">
-        <div class="mod-stat">
-          <div class="mod-stat-label">Este mes</div>
-          <div class="mod-stat-val" id="mod-movs-mes">—</div>
-        </div>
-        <div class="mod-stat">
-          <div class="mod-stat-label">Total año</div>
-          <div class="mod-stat-val" id="mod-movs-anio">—</div>
-        </div>
+      <div class="card-footer">
+        <span class="pill" id="p-imp">SIN DATOS</span>
+        <span class="f-text" id="t-imp">Sin importaciones aún</span>
+        <span class="f-arrow">→</span>
       </div>
-      <div class="recent-list" id="recent-imports">
-        <div class="empty-mod"><div class="empty-mod-icon">📂</div>Sin extractos importados aún</div>
-      </div>
-    </div>
-    <div class="module-card-footer">
-      <span class="module-footer-label" id="imp-last-date">Sin importaciones</span>
-      <span class="module-footer-action">Subir extracto →</span>
     </div>
   </a>
 
-  <!-- PROYECCIONES -->
-  <a class="module-card" href="proyecciones_ingresos.html">
-    <div class="module-card-header">
-      <div>
-        <span class="module-icon">📈</span>
-        <div class="module-title">Proyecciones de Ingresos</div>
-        <div class="module-desc">Introduce los datos de facturación mensuales y sigue el cobro real vs previsto.</div>
+  <a class="card" href="proyecciones_ingresos.html" style="--ca:#60a5fa">
+    <div class="card-inner">
+      <div class="card-num">02</div>
+      <span class="card-icon">📈</span>
+      <div class="card-title">Proyecciones de Ingresos</div>
+      <div class="card-desc">Introduce la proyección mensual de cobros y sigue el real vs previsto desde los extractos importados.</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-lbl">Previsto</div><div class="stat-val" id="s-prev">—</div></div>
+        <div class="stat"><div class="stat-lbl">Real</div><div class="stat-val" id="s-real" style="color:var(--green)">—</div></div>
+        <div class="stat"><div class="stat-lbl">% logro</div><div class="stat-val" id="s-pct">—</div></div>
       </div>
-      <div class="module-arrow">→</div>
-    </div>
-    <div class="module-card-body">
-      <div class="mod-stats" style="margin-bottom:12px">
-        <div class="mod-stat">
-          <div class="mod-stat-label">Previsto mes</div>
-          <div class="mod-stat-val" id="mod-prev-mes">—</div>
-        </div>
-        <div class="mod-stat">
-          <div class="mod-stat-label">Real mes</div>
-          <div class="mod-stat-val" id="mod-real-mes" style="color:var(--green)">—</div>
-        </div>
+      <div class="card-footer">
+        <span class="pill" id="p-proj">SIN DATOS</span>
+        <span class="f-text" id="t-proj">Sin proyección este mes</span>
+        <span class="f-arrow">→</span>
       </div>
-      <div id="mod-proj-progress">
-        <div class="empty-mod"><div class="empty-mod-icon">📋</div>Sin proyección para este mes aún</div>
-      </div>
-    </div>
-    <div class="module-card-footer">
-      <span class="module-footer-label" id="proj-months-label">0 meses con proyección</span>
-      <span class="module-footer-action">Ver proyecciones →</span>
     </div>
   </a>
+
+  <div class="card coming" style="--ca:#a78bfa">
+    <div class="card-inner">
+      <div class="card-num">03</div>
+      <span class="soon-badge">PRÓXIMAMENTE</span>
+      <span class="card-icon">📊</span>
+      <div class="card-title">Análisis de Caja</div>
+      <div class="card-desc">Origen y aplicación de fondos, EBITDA, evolución mensual y proyección de tesorería.</div>
+      <div class="card-footer">
+        <span class="pill pill-off">EN DESARROLLO</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="sec-label" style="margin-top:8px">Próximos módulos</div>
+
+<div class="grid" style="padding-bottom:48px">
+
+  <div class="card coming">
+    <div class="card-inner">
+      <div class="card-num">04</div>
+      <span class="soon-badge">PRÓXIMAMENTE</span>
+      <span class="card-icon">💳</span>
+      <div class="card-title">Tesorería Semanal</div>
+      <div class="card-desc">Posición de caja por banco, vencimientos de deuda y alertas de liquidez.</div>
+      <div class="card-footer"><span class="pill pill-off">EN DESARROLLO</span></div>
+    </div>
+  </div>
+
+  <div class="card coming">
+    <div class="card-inner">
+      <div class="card-num">05</div>
+      <span class="soon-badge">PRÓXIMAMENTE</span>
+      <span class="card-icon">📑</span>
+      <div class="card-title">P&G Consolidado</div>
+      <div class="card-desc">Cuenta de resultados mensual y anual. Gross profit, RRHH, estructura y EBITDA.</div>
+      <div class="card-footer"><span class="pill pill-off">EN DESARROLLO</span></div>
+    </div>
+  </div>
+
+  <div class="card coming">
+    <div class="card-inner">
+      <div class="card-num">06</div>
+      <span class="soon-badge">PRÓXIMAMENTE</span>
+      <span class="card-icon">🔮</span>
+      <div class="card-title">Simulador de Escenarios</div>
+      <div class="card-desc">¿Qué pasa si los cobros bajan un 20%? Simula escenarios de caja en tiempo real.</div>
+      <div class="card-footer"><span class="pill pill-off">EN DESARROLLO</span></div>
+    </div>
+  </div>
 
 </div>
 
 <footer>
-  <span class="footer-label">LPCASH · Legal Pigeon · 2026</span>
-  <span class="footer-label" id="footer-storage">localStorage · datos locales</span>
+  <span class="f-lbl">LPCash · Legal Pigeon · 2026</span>
+  <span class="f-lbl"><div class="f-dot"></div><span id="f-storage">localStorage · datos locales</span></span>
 </footer>
 
 <script>
-const MOVS_KEY    = 'lp_caja_movs_v2';
-const IMPORTS_KEY = 'lp_caja_imports_v2';
-const PROJ_KEY    = 'lp_proj_v1';
+const MK=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+const ME=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function load(k,d){try{return JSON.parse(localStorage.getItem(k)||d)}catch{return JSON.parse(d)}}
+function fmt(n){return new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).format(n)+'€'}
+function fmtP(p){return(p*100).toFixed(1)+'%'}
 
-const MONTHS_ES  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const MONTHS_KEY = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-const BANK_EMOJI = {santander:'🔴',bbva:'🔵',sabadell:'🟢',bankinter:'🟠',caixabank:'🟡'};
-const BANK_CLS   = {santander:'bp-santander',bbva:'bp-bbva',sabadell:'bp-sabadell',bankinter:'bp-bankinter',caixabank:'bp-caixabank'};
+window.onload=()=>{
+  const now=new Date(),m=now.getMonth(),y=now.getFullYear(),key=`${MK[m]}-${y}`;
+  document.getElementById('hdr-date').textContent=now.toLocaleDateString('es-ES',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 
-function loadMovs()    { try { return JSON.parse(localStorage.getItem(MOVS_KEY)    || '{}'); } catch { return {}; } }
-function loadImports() { try { return JSON.parse(localStorage.getItem(IMPORTS_KEY) || '[]'); } catch { return []; } }
-function loadProj()    { try { return JSON.parse(localStorage.getItem(PROJ_KEY)    || '{}'); } catch { return {}; } }
+  const movs=load('lp_caja_movs_v2','{}');
+  const imps=load('lp_caja_imports_v2','[]');
+  const proj=load('lp_proj_v1','{}');
 
-function fmt(n)  { return new Intl.NumberFormat('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0}).format(n); }
-function fmtE(n) { return fmt(n) + '€'; }
-function fmtP(p) { return (p*100).toFixed(1) + '%'; }
+  const total=Object.values(movs).reduce((s,x)=>s+Object.keys(x||{}).length,0);
+  const mm=Object.values(movs[key]||{});
+  const banks=[...new Set(imps.filter(i=>i.month===key).map(i=>i.bank))];
+  const real=mm.filter(x=>x.cat==='ENTRADAS'&&x.importe>0).reduce((s,x)=>s+x.importe,0);
+  const pm=proj[key];
+  const prev=pm?.total||0;
+  const pct=prev>0?real/prev:null;
+  const pc=pct===null?'var(--ink)':pct>=.75?'var(--green)':pct>=.5?'var(--amber)':'var(--red)';
 
-window.onload = () => {
-  const now   = new Date();
-  const month = now.getMonth();
-  const year  = now.getFullYear();
-  const monthKey = `${MONTHS_KEY[month]}-${year}`;
+  document.getElementById('hdr-movs').textContent=`${total} movimientos guardados`;
+  document.getElementById('s-mes').textContent=mm.length||'—';
+  document.getElementById('s-anio').textContent=total||'—';
+  document.getElementById('s-banks').textContent=banks.length||'—';
+  document.getElementById('s-prev').textContent=prev?fmt(prev):'—';
+  document.getElementById('s-real').textContent=real?fmt(real):'—';
+  document.getElementById('s-pct').textContent=pct!==null?fmtP(pct):'—';
+  document.getElementById('s-pct').style.color=pc;
 
-  document.getElementById('hero-month').textContent    = `${MONTHS_ES[month].toUpperCase()} ${year}`;
-  document.getElementById('nav-date').textContent      = now.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-
-  const movsData = loadMovs();
-  const imports  = loadImports();
-  const proj     = loadProj();
-
-  // ── Total movs this month ──
-  const monthMovs    = Object.values(movsData[monthKey] || {});
-  const totalAnual   = Object.values(movsData).reduce((s,m) => s + Object.keys(m||{}).length, 0);
-  const cobrosReal   = monthMovs.filter(m => m.cat === 'ENTRADAS' && m.importe > 0).reduce((s,m) => s+m.importe, 0);
-  const projMonth    = proj[monthKey];
-  const previsto     = projMonth?.total || 0;
-  const pct          = previsto > 0 ? cobrosReal/previsto : null;
-
-  // ── Nav ──
-  document.getElementById('nav-movs').textContent = `${totalAnual} movimientos`;
-
-  // ── Hero ──
-  document.getElementById('h-cobros').textContent      = cobrosReal > 0 ? fmtE(cobrosReal) : '—';
-  document.getElementById('h-cobros-sub').textContent  = cobrosReal > 0 ? `${monthMovs.filter(m=>m.cat==='ENTRADAS'&&m.importe>0).length} cobros` : 'Sin extractos importados';
-  document.getElementById('h-previsto').textContent    = previsto > 0 ? fmtE(previsto) : '—';
-  document.getElementById('h-movs').textContent        = monthMovs.length || '—';
-  document.getElementById('h-movs-sub').textContent    = monthMovs.length ? `${[...new Set(imports.filter(i=>i.month===monthKey).map(i=>i.bank))].length} banco(s)` : 'Sin extractos';
-
-  if (pct !== null) {
-    const pctColor = pct >= 1 ? '#4ade80' : pct >= 0.75 ? '#4ade80' : pct >= 0.5 ? '#fbbf24' : '#f87171';
-    document.getElementById('h-pct').textContent      = fmtP(pct);
-    document.getElementById('h-pct').style.color      = pctColor;
-    document.getElementById('h-pct-sub').textContent  = pct >= 1 ? '✓ Superado' : `Faltan ${fmtE(previsto - cobrosReal)}`;
-  } else {
-    document.getElementById('h-pct').textContent     = '—';
-    document.getElementById('h-pct-sub').textContent = previsto > 0 ? 'Sin cobros aún' : 'Sin proyección';
+  if(imps.length){
+    const last=new Date(imps[imps.length-1].uploadedAt);
+    document.getElementById('p-imp').className='pill pill-on';
+    document.getElementById('p-imp').textContent='ACTIVO';
+    document.getElementById('t-imp').textContent=`Última subida: ${last.toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}`;
+  }
+  if(pm){
+    document.getElementById('p-proj').className='pill pill-on';
+    document.getElementById('p-proj').textContent='ACTIVO';
+    document.getElementById('t-proj').textContent=pct!==null?`${fmtP(pct)} cobrado · ${ME[m]}`:`Proyección guardada · ${ME[m]}`;
   }
 
-  // ── Module: Importaciones ──
-  document.getElementById('mod-movs-mes').textContent  = monthMovs.length || '—';
-  document.getElementById('mod-movs-anio').textContent = totalAnual || '—';
-
-  const recentImps = imports.slice(-4).reverse();
-  if (recentImps.length) {
-    document.getElementById('recent-imports').innerHTML = recentImps.map(i => `
-      <div class="recent-item">
-        <span class="recent-item-bank ${BANK_CLS[i.bank]||'bp-unknown'}">${BANK_EMOJI[i.bank]||'🏦'} ${i.bank.toUpperCase()}</span>
-        <span class="recent-item-name">${i.filename}</span>
-        <span class="recent-item-count">+${i.newCount}</span>
-        <span class="recent-item-date">${new Date(i.uploadedAt).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})}</span>
-      </div>`).join('');
-    const last = new Date(imports[imports.length-1].uploadedAt);
-    document.getElementById('imp-last-date').textContent = `Última subida: ${last.toLocaleDateString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}`;
-  }
-
-  // ── Module: Proyecciones ──
-  const projCount = Object.keys(proj).length;
-  document.getElementById('proj-months-label').textContent = `${projCount} mes${projCount!==1?'es':''} con proyección`;
-  document.getElementById('mod-prev-mes').textContent = previsto > 0 ? fmtE(previsto) : '—';
-  document.getElementById('mod-real-mes').textContent  = cobrosReal > 0 ? fmtE(cobrosReal) : '—';
-
-  if (projMonth && previsto > 0) {
-    const barW   = Math.min((pct||0)*100, 100).toFixed(1);
-    const barCl  = (pct||0)>=1?'#3b82f6':(pct||0)>=0.75?'#1a7a4a':(pct||0)>=0.5?'#b5620a':'#c0392b';
-    document.getElementById('mod-proj-progress').innerHTML = `
-      <div class="mini-progress">
-        <div class="mini-progress-header">
-          <span class="mini-progress-label">Cobros vs previsto</span>
-          <span class="mini-progress-val" style="color:${barCl}">${pct !== null ? fmtP(pct) : '—'}</span>
-        </div>
-        <div class="mini-prog-track">
-          <div class="mini-prog-fill" style="width:${barW}%;background:${barCl}"></div>
-        </div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint);margin-top:6px">
-          ${cobrosReal > 0 ? fmtE(cobrosReal) : '—'} cobrado de ${fmtE(previsto)} previsto
-        </div>
-      </div>`;
-  }
-
-  // ── Alerts ──
-  const alertStrip = document.getElementById('alert-strip');
-  const alerts = [];
-
-  // No imports this month
-  if (monthMovs.length === 0) alerts.push('Sin extractos importados para ' + MONTHS_ES[month] + '. Sube los extractos bancarios.');
-  // No projection
-  if (!projMonth) alerts.push('Sin proyección de ingresos para ' + MONTHS_ES[month] + '. Introdúcela en Proyecciones.');
-  // Low pct
-  if (pct !== null && pct < 0.5 && cobrosReal > 0) alerts.push(`Cobros al ${fmtP(pct)} del previsto. Revisar situación.`);
-
-  if (alerts.length) {
-    alertStrip.classList.remove('hidden');
-    document.getElementById('alert-text').textContent = alerts[0];
-  } else {
-    alertStrip.classList.add('hidden');
-  }
-
-  // Storage info
-  const storageUsed = new Blob([JSON.stringify(localStorage)]).size;
-  document.getElementById('footer-storage').textContent =
-    `localStorage · ${(storageUsed/1024).toFixed(1)} KB usados · datos locales del navegador`;
+  const kb=(new Blob([JSON.stringify(localStorage)]).size/1024).toFixed(1);
+  document.getElementById('f-storage').textContent=`localStorage · ${kb} KB · datos locales`;
 };
 </script>
 </body>
