@@ -219,6 +219,50 @@ footer{margin-top:auto;padding:28px 60px;border-top:1px solid var(--border);disp
     </div>
   </a>
 
+  <!-- 06 DEUDA FINANCIERA -->
+  <a class="card" href="deuda.html" style="--ca:#fbbf24">
+    <div class="card-inner">
+      <div class="card-num">06 — DEUDA FINANCIERA</div>
+      <span class="card-icon">🏦</span>
+      <div class="card-title">Deuda Financiera</div>
+      <div class="card-desc">Saldo vivo por línea de financiación, calendario de vencimientos próximos y movimientos reales de amortización de los extractos.</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-lbl">Deuda viva</div><div class="stat-val" id="s-deuda" style="color:var(--red)">—</div></div>
+        <div class="stat"><div class="stat-lbl">Líneas</div><div class="stat-val" id="s-lineas">—</div></div>
+        <div class="stat"><div class="stat-lbl">Vence 30d</div><div class="stat-val" id="s-venc30" style="color:var(--amber)">—</div></div>
+      </div>
+    </div>
+    <div class="card-foot">
+      <div class="foot-status">
+        <span class="pill" id="p-deuda">SIN DATOS</span>
+        <span class="foot-text" id="t-deuda">Añade las líneas de deuda</span>
+      </div>
+      <span class="foot-arrow">→</span>
+    </div>
+  </a>
+
+  <!-- 06 DEUDA -->
+  <a class="card" href="deuda.html" style="--ca:#f87171">
+    <div class="card-inner">
+      <div class="card-num">06 — DEUDA FINANCIERA</div>
+      <span class="card-icon">🏛️</span>
+      <div class="card-title">Deuda Financiera</div>
+      <div class="card-desc">Saldos vivos de pólizas y préstamos. Calendario de vencimientos por banco. Movimientos de amortización cruzados con los extractos.</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-lbl">Saldo vivo</div><div class="stat-val" id="s-deuda-total" style="color:var(--red)">—</div></div>
+        <div class="stat"><div class="stat-lbl">Vence 30d</div><div class="stat-val" id="s-deuda-30" style="color:var(--amber)">—</div></div>
+        <div class="stat"><div class="stat-lbl">Líneas</div><div class="stat-val" id="s-deuda-lineas">—</div></div>
+      </div>
+    </div>
+    <div class="card-foot">
+      <div class="foot-status">
+        <span class="pill pill-on">ACTIVO</span>
+        <span class="foot-text" id="t-deuda">Gestiona saldos y vencimientos</span>
+      </div>
+      <span class="foot-arrow">→</span>
+    </div>
+  </a>
+
 </div>
 
 <footer>
@@ -315,6 +359,39 @@ window.onload=()=>{
     document.getElementById('s-ambers').textContent = ambers || '✓';
     document.getElementById('s-ambers').style.color = ambers > 0 ? 'var(--amber)' : 'var(--green)';
     document.getElementById('s-reds').style.color   = reds   > 0 ? 'var(--red)'   : 'var(--green)';
+  }
+
+  // Card 06 — Deuda
+  try {
+    const debt = load('lp_deuda_v1','[]');
+    if (Array.isArray(debt) && debt.length) {
+      const totalSaldo = debt.reduce((s,l)=>s+(l.saldoVivo||0),0);
+      const allVenc    = debt.flatMap(l=>(l.vencimientos||[]).map(v=>({...v,days:Math.ceil((new Date(v.fecha)-now)/86400000)})));
+      const next30     = allVenc.filter(v=>v.days>=0&&v.days<=30).reduce((s,v)=>s+v.importe,0);
+      const fmtK       = n=>new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).format(Math.round(n))+'€';
+      document.getElementById('s-deuda-total').textContent  = totalSaldo>0?fmtK(totalSaldo):'—';
+      document.getElementById('s-deuda-30').textContent     = next30>0?fmtK(next30):'—';
+      document.getElementById('s-deuda-lineas').textContent = debt.length;
+    }
+  } catch(e) {}
+
+  // Card 06 — Deuda
+  {
+    const debt = load('lp_deuda_v1','[]');
+    if(debt.length){
+      const totalS = debt.reduce((s,l)=>s+(l.saldo||0),0);
+      const now2   = new Date();
+      const in30   = new Date(now2); in30.setDate(in30.getDate()+30);
+      const v30    = debt.flatMap(l=>(l.vencimientos||[]).filter(v=>{const d=new Date(v.fecha);return d>=now2&&d<=in30}));
+      const t30    = v30.reduce((s,v)=>s+(v.importe||0),0);
+      const fmtK2  = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).format(Math.round(n))+'€';
+      document.getElementById('s-deuda').textContent  = fmtK2(totalS);
+      document.getElementById('s-lineas').textContent = debt.length;
+      document.getElementById('s-venc30').textContent = t30>0?fmtK2(t30):'—';
+      document.getElementById('p-deuda').className    = 'pill pill-on';
+      document.getElementById('p-deuda').textContent  = 'ACTIVO';
+      document.getElementById('t-deuda').textContent  = `${debt.length} línea${debt.length!==1?'s':''} · ${fmtK2(totalS)} deuda viva`;
+    }
   }
 
   const kb=(new Blob([JSON.stringify(localStorage)]).size/1024).toFixed(1);
