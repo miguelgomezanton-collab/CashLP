@@ -270,7 +270,7 @@ function renderMonth(key) {
   const monIdx = MK.indexOf(mon);
   const label  = MF[monIdx];
   const now    = new Date();
-  const isPast = (parseInt(year)*12 + monIdx) < (now.getFullYear()*12 + now.getMonth());
+  const isPast = false; // allow input for all months
   const proj   = loadProj();
   const p      = proj[key];
 
@@ -280,16 +280,11 @@ function renderMonth(key) {
     <div class="page-header">
       <div>
         <div class="page-title">Ingresos — ${label} ${year}</div>
-        <div class="page-sub">${p ? 'Proyección guardada · solo lectura' : isPast ? 'Mes pasado · no editable' : 'Introduce la proyección del mes'}</div>
+        <div class="page-sub">${p ? 'Proyección guardada · solo lectura' : 'Introduce la proyección del mes'}</div>
       </div>
     </div>
 
-    ${isPast && !p ? `
-    <div class="alert past"><span class="alert-icon">🔒</span>
-      <span>Este mes ya ha pasado. Solo se pueden introducir proyecciones para el mes actual y futuros.</span>
-    </div>` : ''}
-
-    ${!isPast && !p ? `
+    ${!p ? `
     <div class="alert info"><span class="alert-icon">ℹ</span>
       <span>Introduce los valores en azul para calcular la proyección de cobros de <strong>${label}</strong>. Una vez guardada no se puede modificar.</span>
     </div>` : ''}
@@ -369,9 +364,7 @@ function renderMonth(key) {
         </div>
 
         <!-- FOOTER -->
-        ${isPast && !p
-          ? `<div style="padding:10px 14px;background:var(--surface2);text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint)">Mes pasado · sin proyección guardada</div>`
-          : p
+        ${p
           ? `<div class="locked-bar">
                <span class="locked-label">🔒 Guardado el ${new Date(p.savedAt).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}</span>
                <span class="locked-hint">Solo lectura</span>
