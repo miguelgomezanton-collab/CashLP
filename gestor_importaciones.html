@@ -645,8 +645,8 @@ function renderMonth(monthKey) {
   `;
 
   // Banks summary
-  const bankColors = {santander:'bp-santander', bbva:'bp-bbva', sabadell:'bp-sabadell', bankinter:'bp-bankinter', caixabank:'bp-caixabank'};
-  const bankEmoji  = {santander:'🔴', bbva:'🔵', sabadell:'🟢', bankinter:'🟠', caixabank:'🟡'};
+  const bankColors = {santander:'bp-santander', bbva:'bp-bbva', sabadell:'bp-sabadell', bankinter:'bp-bankinter', caixabank:'bp-caixabank', multi:'bp-unknown'};
+  const bankEmoji  = {santander:'🔴', bbva:'🔵', sabadell:'🟢', bankinter:'🟠', caixabank:'🟡', multi:'🏦'};
   document.getElementById('banks-summary').innerHTML = banks.map(b =>
     `<span class="import-bank-pill ${bankColors[b]||'bp-unknown'}">${bankEmoji[b]||'🏦'} ${b.toUpperCase()}</span>`
   ).join('');
@@ -824,7 +824,7 @@ function showReviewModal({ rows, bank, filename, month, newRows, dupRows }) {
   modalFilter = 'all';
   editedRows  = {};
 
-  const bankEmoji = {santander:'🔴', bbva:'🔵', sabadell:'🟢', bankinter:'🟠', caixabank:'🟡'};
+  const bankEmoji = {santander:'🔴', bbva:'🔵', sabadell:'🟢', bankinter:'🟠', caixabank:'🟡', multi:'🏦'};
   const [mon, year] = month.split('-');
   const monIdx = MONTH_NAMES.indexOf(mon);
 
@@ -1083,49 +1083,76 @@ function hideProcessing() {
 // ═══════════════════════════════════════════════
 function detectBank(filename, rows) {
   const fn = filename.toLowerCase();
-  if (fn.includes('bbva')) return 'bbva';
-  if (fn.includes('sabadell')) return 'sabadell';
-  if (fn.includes('bankinter')) return 'bankinter';
+  if (fn.includes('bbva'))       return 'bbva';
+  if (fn.includes('sabadell'))   return 'sabadell';
+  if (fn.includes('bankinter'))  return 'bankinter';
   if (fn.includes('caixa') || fn.includes('lacaixa')) return 'caixabank';
   if (fn.includes('movimientoscuenta') || fn.includes('santander') || fn.includes('0049')) return 'santander';
-  return 'santander';
+  // Unified / multi-bank file — treat as generic
+  if (fn.includes('unificado') || fn.includes('extracto') || fn.includes('movimientos')) return 'multi';
+  return 'santander'; // safe default
 }
 
 function parseXLSX(buffer) {
-  const wb = XLSX.read(new Uint8Array(buffer), { type:'array' });
+  const wb = XLSX.read(new Uint8Array(buffer), { type:'array', cellDates:true });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:null });
 
+  // Find header row — look for fecha + concepto + importe
   let headerRow = -1;
-  for (let i = 0; i < Math.min(raw.length, 15); i++) {
-    const rowStr = raw[i].filter(Boolean).join(' ').toLowerCase();
-    if (rowStr.includes('fecha operaci') || rowStr.includes('fecha valor') || rowStr.includes('concepto')) {
+  for (let i = 0; i < Math.min(raw.length, 20); i++) {
+    const rowStr = (raw[i] || []).filter(Boolean).join(' ').toLowerCase();
+    if (rowStr.includes('fecha') && (rowStr.includes('concepto') || rowStr.includes('importe'))) {
       headerRow = i; break;
     }
   }
   if (headerRow === -1) headerRow = 0;
 
-  const headers = raw[headerRow].map(h => (h||'').toString().trim().toLowerCase());
-  const iF = headers.findIndex(h => h.includes('fecha') && h.includes('operaci'));
-  const iFA = headers.findIndex(h => h.includes('fecha'));
-  const iC = headers.findIndex(h => h.includes('concepto'));
-  const iI = headers.findIndex(h => h.includes('importe'));
+  const headers = (raw[headerRow] || []).map(h => (h||'').toString().trim().toLowerCase());
+
+  // Map columns by name
+  const iF  = (() => {
+    // prefer "fecha operación" or "fecha contable", fallback to first "fecha"
+    let idx = headers.findIndex(h => h.includes('fecha') && (h.includes('operaci') || h.includes('contable')));
+    if (idx < 0) idx = headers.findIndex(h => h.includes('fecha'));
+    return idx >= 0 ? idx : 0;
+  })();
+  const iC  = (() => {
+    let idx = headers.findIndex(h => h.includes('concepto') || h.includes('descripci'));
+    return idx >= 0 ? idx : 2; // col 2 = concepto in unified format
+  })();
+  const iI  = (() => {
+    let idx = headers.findIndex(h => h === 'importe' || (h.includes('importe') && !h.includes('saldo')));
+    return idx >= 0 ? idx : 3; // col 3 = importe in unified format
+  })();
+
+  const formatFecha = (v) => {
+    if (!v) return '';
+    if (v instanceof Date) return v.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit', year:'numeric'});
+    if (typeof v === 'number') {
+      const d = new Date(Math.round((v - 25569) * 86400000));
+      return d.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit', year:'numeric'});
+    }
+    return v.toString().trim();
+  };
+
+  const parseImporte = (v) => {
+    if (v === null || v === undefined || v === '') return NaN;
+    if (typeof v === 'number') return v;
+    return parseFloat(v.toString().replace(/\./g,'').replace(',','.').replace(/[^0-9\-\.]/g,''));
+  };
 
   const rows = [];
   for (let i = headerRow + 1; i < raw.length; i++) {
     const row = raw[i];
     if (!row || row.every(c => c === null || c === '')) continue;
-    let fecha = row[iF >= 0 ? iF : iFA >= 0 ? iFA : 0];
-    let concepto = row[iC >= 0 ? iC : 2];
-    let importe = row[iI >= 0 ? iI : 3];
-    if (typeof importe === 'string') importe = parseFloat(importe.replace(/\./g,'').replace(',','.'));
-    else importe = parseFloat(importe);
-    if (isNaN(importe)) continue;
-    if (fecha instanceof Date) fecha = fecha.toLocaleDateString('es-ES');
-    else if (typeof fecha === 'number') fecha = new Date(Math.round((fecha-25569)*86400000)).toLocaleDateString('es-ES');
-    else fecha = (fecha||'').toString().trim();
-    if (!fecha || !concepto) continue;
-    rows.push({ fecha: fecha.trim(), concepto: (concepto||'').toString().trim(), importe });
+
+    const fecha    = formatFecha(row[iF]);
+    const concepto = (row[iC] || '').toString().trim();
+    const importe  = parseImporte(row[iI]);
+
+    if (!fecha || !concepto || concepto === '-' || isNaN(importe)) continue;
+    rows.push({ fecha, concepto, importe });
   }
   return rows;
 }
