@@ -22,17 +22,19 @@ body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',sans-seri
 
 /* ── HEADER ── */
 header{padding:48px 60px 0;display:flex;align-items:flex-start;justify-content:space-between}
-.brand{display:flex;align-items:center;gap:16px}
-.brand-dot{width:12px;height:12px;border-radius:50%;background:var(--green);box-shadow:0 0 16px rgba(74,222,128,.5);flex-shrink:0;margin-top:4px}
-.brand-name{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;letter-spacing:.03em;line-height:1}
-.brand-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-faint);letter-spacing:.14em;text-transform:uppercase;margin-top:5px}
+.brand{display:flex;align-items:center;gap:20px}
+.brand-logo{height:44px;width:auto;display:block}
+.brand-divider{width:1px;height:40px;background:var(--border-light);flex-shrink:0}
+.brand-text{}
+.brand-name{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;letter-spacing:.04em;line-height:1;color:var(--ink)}
+.brand-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.16em;text-transform:uppercase;margin-top:5px}
 .header-right{text-align:right}
 .header-date{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);line-height:2}
 .header-tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;border:1px solid var(--border-light);border-radius:2px;color:var(--ink-faint);margin-top:6px}
 
 /* ── RULE ── */
 .rule{height:1px;background:var(--border);margin:36px 60px 0;position:relative}
-.rule::after{content:'';position:absolute;left:0;top:0;width:100px;height:1px;background:var(--green)}
+.rule::after{content:'';position:absolute;left:0;top:0;width:100px;height:1px;background:#4a7fd4}
 
 /* ── SECTION LABEL ── */
 .sec{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);padding:32px 60px 16px;display:flex;align-items:center;gap:16px}
@@ -80,15 +82,17 @@ footer{margin-top:auto;padding:28px 60px;border-top:1px solid var(--border);disp
 
 @media(max-width:900px){.grid{grid-template-columns:1fr;padding:0 24px}header,.rule,.sec,footer{padding-left:24px;padding-right:24px}}
 </style>
+<script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
 </head>
 <body>
 
 <header>
   <div class="brand">
-    <div class="brand-dot"></div>
-    <div>
+    <img class="brand-logo" src="logo.png" alt="Legal Pigeon">
+    <div class="brand-divider"></div>
+    <div class="brand-text">
       <div class="brand-name">LPCash</div>
-      <div class="brand-sub">Legal Pigeon · Gestión de Caja 2026</div>
+      <div class="brand-sub">Gestión de Caja · 2026</div>
     </div>
   </div>
   <div class="header-right">

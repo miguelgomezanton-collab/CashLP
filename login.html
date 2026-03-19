@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legal Pigeon · Caja</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #06090f; --surface: #0c1220; --border: #162040; --border2: #1e2e55;
+    --blue-main: #1e3a8a; --blue-mid: #2952b3; --blue-light: #4a7fd4; --blue-pale: #8ab0e8;
+    --text: #e8edf5; --text2: #7888a0; --muted: #3a4a66; --error: #e05c5c; --green: #4abf8a;
+  }
+  body {
+    background: linear-gradient(135deg, #04070e 0%, #06090f 40%, #080d18 100%);
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 90% 70% at 15% 5%, rgba(20,45,120,0.70) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 55% at 88% 85%, rgba(30,58,138,0.45) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 45% at 55% 40%, rgba(74,127,212,0.10) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(74,127,212,0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,127,212,0.055) 1px, transparent 1px);
+    background-size: 52px 52px;
+    pointer-events: none; z-index: 0;
+  }
+  .wrap {
+    position: relative; z-index: 1; width: 100%; max-width: 380px; padding: 0 24px;
+    animation: fadeUp 0.55s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+  .logo-area { text-align: center; margin-bottom: 36px; }
+  .logo-img { height: 52px; width: auto; display: block; margin: 0 auto 16px; }
+  .platform-label {
+    display: inline-block; font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 0.20em; text-transform: uppercase; color: var(--blue-pale);
+    border: 1px solid var(--border2); padding: 4px 14px; border-radius: 20px;
+    background: rgba(74,127,212,0.06);
+  }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 32px 28px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+  }
+  .card-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .card-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 24px; }
+  .divider { height: 1px; background: var(--border); margin-bottom: 22px; }
+
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block; font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); margin-bottom: 7px;
+  }
+  .field input {
+    width: 100%;
+    background: linear-gradient(135deg, #04070e 0%, #06090f 40%, #080d18 100%);
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 14px;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s; letter-spacing: 0.08em;
+  }
+  .field input:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(41,82,179,0.15); }
+  .field input::placeholder { color: var(--muted); letter-spacing: 0.05em; }
+
+  .btn {
+    width: 100%; margin-top: 4px; padding: 12px;
+    background: var(--blue-main); color: #e8edf5;
+    border: none; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.05em; cursor: pointer; transition: background 0.2s;
+  }
+  .btn:hover { background: var(--blue-mid); }
+
+  .error-msg {
+    margin-top: 12px; padding: 10px 14px;
+    background: rgba(224,92,92,0.07); border: 1px solid rgba(224,92,92,0.18);
+    border-radius: 7px; font-size: 11px; color: var(--error); display: none;
+    font-family: 'DM Mono', monospace;
+  }
+  .footer {
+    text-align: center; margin-top: 20px; font-size: 10px;
+    color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.08em;
+  }
+
+  /* SUCCESS OVERLAY */
+  .success-overlay {
+    position: fixed; inset: 0;
+    background: linear-gradient(135deg, #04070e 0%, #06090f 40%, #080d18 100%);
+    z-index: 100; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    opacity: 0; pointer-events: none; transition: opacity 0.4s;
+  }
+  .success-overlay.show { opacity: 1; pointer-events: all; }
+  .success-ring {
+    width: 52px; height: 52px; border: 1.5px solid var(--blue-light);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    animation: ringPulse 1.4s ease infinite;
+  }
+  @keyframes ringPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(74,127,212,0.3); }
+    50%      { box-shadow: 0 0 0 8px rgba(74,127,212,0); }
+  }
+  .success-ring svg {
+    width: 20px; height: 20px; stroke: var(--blue-light);
+    fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .success-overlay p { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); letter-spacing: 0.12em; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="logo-area">
+    <img class="logo-img" src="logo.png" alt="Legal Pigeon">
+    <span class="platform-label">Gestión de Caja</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Acceder a la plataforma</div>
+    <div class="card-sub">Acceso restringido · Solo personal autorizado</div>
+    <div class="divider"></div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="pass-input" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn" onclick="doLogin()">Entrar →</button>
+    <div class="error-msg" id="err-msg">Contraseña incorrecta</div>
+  </div>
+
+  <div class="footer">Legal Pigeon S.L. · Uso interno · Acceso restringido</div>
+</div>
+
+<div class="success-overlay" id="success">
+  <div class="success-ring">
+    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+  <p>Acceso concedido · Cargando plataforma...</p>
+</div>
+
+<script>
+  const PASS = 'LP2026';
+
+  document.getElementById('pass-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  // If already authenticated this session, skip login
+  if (sessionStorage.getItem('lpcash_auth') === '1') {
+    window.location.href = 'index.html';
+  }
+
+  function doLogin() {
+    const p   = document.getElementById('pass-input').value;
+    const err = document.getElementById('err-msg');
+    if (p === PASS) {
+      err.style.display = 'none';
+      sessionStorage.setItem('lpcash_auth', '1');
+      document.getElementById('success').classList.add('show');
+      setTimeout(() => { window.location.href = 'index.html'; }, 1800);
+    } else {
+      err.style.display = 'block';
+      document.getElementById('pass-input').value = '';
+      document.getElementById('pass-input').focus();
+    }
+  }
+</script>
+</body>
+</html>
