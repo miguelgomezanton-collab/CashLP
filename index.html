@@ -170,26 +170,26 @@ footer{margin-top:auto;padding:28px 60px;border-top:1px solid var(--border);disp
   </a>
 
   <!-- 04 CUENTA TESORERÍA -->
-  <div class="card soon" style="--ca:#fbbf24">
+  <a class="card" href="tesoreria.html" style="--ca:#fbbf24">
     <div class="card-inner">
       <div class="card-num">04 — CUENTA DE TESORERÍA</div>
       <span class="card-icon">💳</span>
       <div class="card-title">Cuenta de Tesorería</div>
-      <div class="card-desc">Posición de caja por banco, vencimientos de deuda financiera, líneas de crédito disponibles y alertas de tensión de liquidez semanal.</div>
+      <div class="card-desc">Flujo de caja de explotación y financiación. Cobros, pagos, disposiciones de deuda y amortizaciones. FC total de tesorería por mes y anual.</div>
       <div class="stats">
-        <div class="stat"><div class="stat-lbl">Caja total</div><div class="stat-val">—</div></div>
-        <div class="stat"><div class="stat-lbl">Deuda</div><div class="stat-val">—</div></div>
-        <div class="stat"><div class="stat-lbl">Disponible</div><div class="stat-val">—</div></div>
+        <div class="stat"><div class="stat-lbl">FC Explotación</div><div class="stat-val" id="s-fcexpl">—</div></div>
+        <div class="stat"><div class="stat-lbl">FC Financiación</div><div class="stat-val" id="s-fcfin">—</div></div>
+        <div class="stat"><div class="stat-lbl">FC Total</div><div class="stat-val" id="s-fctotal">—</div></div>
       </div>
     </div>
     <div class="card-foot">
       <div class="foot-status">
-        <span class="pill pill-soon">PRÓXIMAMENTE</span>
-        <span class="foot-text">En construcción</span>
+        <span class="pill" id="p-tes">SIN DATOS</span>
+        <span class="foot-text" id="t-tes">Importa extractos para ver el flujo</span>
       </div>
       <span class="foot-arrow">→</span>
     </div>
-  </div>
+  </a>
 
 </div>
 
@@ -246,6 +246,28 @@ window.onload=()=>{
     document.getElementById('p-oaf').className='pill pill-on';
     document.getElementById('p-oaf').textContent='ACTIVO';
     document.getElementById('t-oaf').textContent=`${MK[m]} ${y} · ${mm.length} movimientos`;
+  }
+
+  // Card 04 — Tesorería
+  if(mm.length){
+    const explIn  = mm.filter(x=>x.cat==='Entradas clientes'&&x.importe>0).reduce((s,x)=>s+x.importe,0);
+    const explOut = Math.abs(mm.filter(x=>['PIGEONS','Sueldos','Cotizaciones','Arrendamientos','Serv. profesionales','Seguros','Publicidad','Suministros','IT y SaaS','Servicios bancarios','IRPF','IVA','Otros impuestos'].includes(x.cat)&&x.importe<0).reduce((s,x)=>s+x.importe,0));
+    const finIn   = mm.filter(x=>x.cat==='Financiación'&&x.importe>0).reduce((s,x)=>s+x.importe,0);
+    const finOut  = Math.abs(mm.filter(x=>x.cat==='Dev. deuda bancaria'&&x.importe<0).reduce((s,x)=>s+x.importe,0));
+    const fcExpl  = explIn - explOut;
+    const fcFin   = finIn - finOut;
+    const fcTot   = fcExpl + fcFin;
+    const fmtK    = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).format(Math.round(Math.abs(n)))+'€';
+    const signK   = n => (n>=0?'+':'-')+fmtK(n);
+    document.getElementById('s-fcexpl').textContent  = signK(fcExpl);
+    document.getElementById('s-fcexpl').style.color  = fcExpl>=0?'var(--green)':'var(--red)';
+    document.getElementById('s-fcfin').textContent   = signK(fcFin);
+    document.getElementById('s-fcfin').style.color   = fcFin>=0?'var(--green)':'var(--red)';
+    document.getElementById('s-fctotal').textContent = signK(fcTot);
+    document.getElementById('s-fctotal').style.color = fcTot>=0?'var(--green)':'var(--red)';
+    document.getElementById('p-tes').className='pill pill-on';
+    document.getElementById('p-tes').textContent='ACTIVO';
+    document.getElementById('t-tes').textContent=`${ME[m]} ${y} · FC total ${signK(fcTot)}`;
   }
 
   const kb=(new Blob([JSON.stringify(localStorage)]).size/1024).toFixed(1);
