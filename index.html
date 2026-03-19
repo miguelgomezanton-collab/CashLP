@@ -193,6 +193,34 @@ footer{margin-top:auto;padding:28px 60px;border-top:1px solid var(--border);disp
 
 </div>
 
+<div class="sec" style="margin-top:8px">Herramientas</div>
+
+<div class="grid" style="grid-template-columns:1fr 1fr 1fr;padding-bottom:48px">
+
+  <!-- 05 DASHBOARD ALERTAS -->
+  <a class="card" href="alertas.html" style="--ca:#f87171">
+    <div class="card-inner">
+      <div class="card-num">05 — DASHBOARD DE SALUD</div>
+      <span class="card-icon">🚦</span>
+      <div class="card-title">Dashboard de Alertas</div>
+      <div class="card-desc">Semáforo semanal de salud financiera. Detecta extractos desactualizados, proyecciones pendientes, movimientos sin categorizar y FC negativo.</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-lbl">Score</div><div class="stat-val" id="s-score">—</div></div>
+        <div class="stat"><div class="stat-lbl">Críticos</div><div class="stat-val" id="s-reds" style="color:var(--red)">—</div></div>
+        <div class="stat"><div class="stat-lbl">Avisos</div><div class="stat-val" id="s-ambers" style="color:var(--amber)">—</div></div>
+      </div>
+    </div>
+    <div class="card-foot">
+      <div class="foot-status">
+        <span class="pill pill-on" style="background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3)">ACTIVO</span>
+        <span class="foot-text">Revisión automática</span>
+      </div>
+      <span class="foot-arrow">→</span>
+    </div>
+  </a>
+
+</div>
+
 <footer>
   <span class="f-lbl">LPCash · Legal Pigeon · 2026</span>
   <span class="f-lbl"><div class="f-dot"></div><span id="f-storage">localStorage · datos locales</span></span>
@@ -268,6 +296,25 @@ window.onload=()=>{
     document.getElementById('p-tes').className='pill pill-on';
     document.getElementById('p-tes').textContent='ACTIVO';
     document.getElementById('t-tes').textContent=`${ME[m]} ${y} · FC total ${signK(fcTot)}`;
+  }
+
+  // Card 05 — Alertas score (quick calculation)
+  {
+    const sinCatCount = mm.filter(x=>x.cat==='Sin categoría').length;
+    const p2 = load('lp_ingresos_v1','{}')[key];
+    const imp2 = imps.filter(i=>i.month===key);
+    let reds=0, ambers=0;
+    if (!mm.length) reds++;
+    else if (imp2.length && (now - new Date(imp2[imp2.length-1].at)) / 86400000 > 10) ambers++;
+    if (!p2) ambers++;
+    if (sinCatCount > 5) ambers++;
+    const score = Math.round(((6 - reds - ambers*0.5) / 6) * 100);
+    document.getElementById('s-score').textContent  = Math.max(0,score);
+    document.getElementById('s-score').style.color  = score>=80?'var(--green)':score>=50?'var(--amber)':'var(--red)';
+    document.getElementById('s-reds').textContent   = reds   || '✓';
+    document.getElementById('s-ambers').textContent = ambers || '✓';
+    document.getElementById('s-ambers').style.color = ambers > 0 ? 'var(--amber)' : 'var(--green)';
+    document.getElementById('s-reds').style.color   = reds   > 0 ? 'var(--red)'   : 'var(--green)';
   }
 
   const kb=(new Blob([JSON.stringify(localStorage)]).size/1024).toFixed(1);

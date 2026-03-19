@@ -267,13 +267,23 @@ function renderMonth(key) {
   }
 
   const cf = computeCF(movs);
-  document.getElementById('main-inner').innerHTML = buildCFHTML(label, year, cf, movs.length);
+  document.getElementById('main-inner').innerHTML = buildCFHTML(label, year, cf, movs.length, key);
 }
 
 // ── BUILD HTML ──
-function buildCFHTML(label, year, cf, nMovs) {
+function buildCFHTML(label, year, cf, nMovs, key) {
   const colorFC = n => n > 0 ? 'var(--green)' : n < 0 ? 'var(--red)' : 'var(--ink-faint)';
   const totalRef = cf.totalExplIn || 1;
+
+  // Cumulative: sum all months up to and including this one
+  const movs = loadMovs();
+  const monIdx = MK.indexOf(key.split('-')[0]);
+  let cumulative = 0;
+  for (let i = 0; i <= monIdx; i++) {
+    const k  = `${MK[i]}-${year}`;
+    const mm = Object.values(movs[k]||{});
+    if (mm.length) cumulative += computeCF(mm).fcTotal;
+  }
 
   const inRows = (groups, ref) => groups.filter(g=>g.val>0).map(g => `
     <div class="cf-row indent">
@@ -304,7 +314,7 @@ function buildCFHTML(label, year, cf, nMovs) {
     </div>
 
     <!-- SUMMARY CARDS -->
-    <div class="summary-row">
+    <div class="summary-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
       <div class="sum-card" style="border-left-color:${colorFC(cf.fcExplot)}">
         <div class="sum-card-label">FC Explotación</div>
         <div class="sum-card-val" style="color:${colorFC(cf.fcExplot)}">${signed(cf.fcExplot)}</div>
@@ -316,9 +326,14 @@ function buildCFHTML(label, year, cf, nMovs) {
         <div class="sum-card-sub">${fmtE(cf.totalFinIn)} entradas · ${fmtE(cf.totalFinOut)} devoluc.</div>
       </div>
       <div class="sum-card" style="border-left-color:${colorFC(cf.fcTotal)};${cf.fcTotal>=0?'background:var(--green-bg)':'background:var(--red-bg)'}">
-        <div class="sum-card-label">Flujo Caja Total</div>
+        <div class="sum-card-label">FC Total mes</div>
         <div class="sum-card-val" style="color:${colorFC(cf.fcTotal)};font-size:26px">${signed(cf.fcTotal)}</div>
-        <div class="sum-card-sub">${cf.fcTotal>=0?'Generación positiva de caja':'Consumo neto de caja'}</div>
+        <div class="sum-card-sub">${cf.fcTotal>=0?'Generación de caja':'Consumo de caja'}</div>
+      </div>
+      <div class="sum-card" style="border-left-color:${colorFC(cumulative)};background:${cumulative>=0?'#f0faf4':'#fdf0ee'}">
+        <div class="sum-card-label">Saldo acumulado ${year}</div>
+        <div class="sum-card-val" style="color:${colorFC(cumulative)};font-size:22px">${signed(cumulative)}</div>
+        <div class="sum-card-sub">Acumulado ENE → ${label.slice(0,3).toUpperCase()}</div>
       </div>
     </div>
 
@@ -407,7 +422,7 @@ function showAnnual() {
   const rows = MK.map((m, i) => {
     const key  = `${m}-${year}`;
     const mm   = Object.values(movs[key]||{});
-    if (!mm.length) return `<tr style="opacity:.3"><td>${MF[i].slice(0,3)}</td><td colspan="5" style="text-align:center;color:var(--ink-faint);font-size:11px">—</td></tr>`;
+    if (!mm.length) return { html: `<tr style="opacity:.3"><td>${MF[i].slice(0,3).toUpperCase()+MF[i].slice(3).toLowerCase()}</td><td colspan="6" style="text-align:center;color:var(--ink-faint);font-size:11px">—</td></tr>`, fc: 0 };
 
     const cf = computeCF(mm);
     totExplIn  += cf.totalExplIn;
@@ -415,14 +430,24 @@ function showAnnual() {
     totFinIn   += cf.totalFinIn;
     totFinOut  += cf.totalFinOut;
 
+    return { fc: cf.fcTotal, cf, key, label: MF[i].slice(0,3).toUpperCase()+MF[i].slice(3).toLowerCase() };
+  });
+
+  // Compute cumulative balance
+  let cumulative = 0;
+  const rowsHtml = rows.map(r => {
+    if (r.html) return r.html; // empty month
+    cumulative += r.fc;
     const cc = n => n>0?'pos':n<0?'neg':'zero';
-    return `<tr onclick="selectMonth('${key}')">
-      <td style="font-family:'IBM Plex Sans',sans-serif;font-weight:600">${MF[i].slice(0,3).toUpperCase()+MF[i].slice(3).toLowerCase()}</td>
+    const cf = r.cf;
+    return `<tr onclick="selectMonth('${r.key}')">
+      <td style="font-family:'IBM Plex Sans',sans-serif;font-weight:600">${r.label}</td>
       <td class="${cc(cf.totalExplIn)}">${fmtE(cf.totalExplIn)}</td>
-      <td class="${cc(-cf.totalExplOut)}" style="color:var(--red)">${fmtE(cf.totalExplOut)}</td>
+      <td style="color:var(--red)">${fmtE(cf.totalExplOut)}</td>
       <td class="${cc(cf.fcExplot)}" style="font-weight:600">${signed(cf.fcExplot)}</td>
       <td class="${cc(cf.fcFinanc)}" style="font-weight:600">${signed(cf.fcFinanc)}</td>
-      <td class="${cc(cf.fcTotal)}" style="font-weight:700;font-size:13px">${signed(cf.fcTotal)}</td>
+      <td class="${cc(cf.fcTotal)}" style="font-weight:700">${signed(cf.fcTotal)}</td>
+      <td class="${cc(cumulative)}" style="font-weight:700;font-size:13px">${signed(cumulative)}</td>
     </tr>`;
   }).join('');
 
@@ -466,17 +491,19 @@ function showAnnual() {
           <th>Pagos explot.</th>
           <th>FC Explotación</th>
           <th>FC Financiación</th>
-          <th>FC TOTAL</th>
+          <th>FC Mes</th>
+          <th>Saldo acumulado</th>
         </tr></thead>
         <tbody>
-          ${rows}
+          ${rowsHtml}
           <tr class="total-row">
             <td style="font-family:'IBM Plex Sans',sans-serif">TOTAL ${year}</td>
             <td class="${cc(totExplIn)}">${fmtE(totExplIn)}</td>
             <td style="color:var(--red)">${fmtE(totExplOut)}</td>
             <td class="${cc(totFcExplot)}" style="font-weight:700">${signed(totFcExplot)}</td>
             <td class="${cc(totFcFinanc)}" style="font-weight:700">${signed(totFcFinanc)}</td>
-            <td class="${cc(totFC)}" style="font-weight:700;font-size:13px">${signed(totFC)}</td>
+            <td class="${cc(totFC)}" style="font-weight:700">${signed(totFC)}</td>
+            <td class="${cc(cumulative)}" style="font-weight:700;font-size:13px">${signed(cumulative)}</td>
           </tr>
         </tbody>
       </table>
