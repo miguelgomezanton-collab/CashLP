@@ -109,6 +109,9 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
       <div class="sb-head-sub">Por mes</div>
     </div>
     <div class="sb-months" id="sb-months"></div>
+    <div style="padding:12px 16px;border-top:1px solid var(--border)">
+      <button id="btn-annual" onclick="showAnnual()" style="width:100%;padding:8px 10px;background:transparent;border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-dim);cursor:pointer;border-radius:3px;transition:all .15s;text-align:left">📊 Resumen anual</button>
+    </div>
   </div>
 
   <div class="main">
@@ -185,6 +188,8 @@ function selectMonth(key) {
   currentKey = key;
   document.querySelectorAll('.sb-month').forEach(el => el.classList.remove('active'));
   document.getElementById('sbm-'+key)?.classList.add('active');
+  const btn = document.getElementById('btn-annual');
+  if (btn) { btn.style.background='transparent'; btn.style.color='var(--ink-dim)'; }
   renderOAF(key);
 }
 
@@ -327,6 +332,175 @@ function renderOAF(key) {
         ${renderRows(aplicData, totalAplic, extraAplic)}
       </div>
 
+    </div>`;
+}
+// ── ANNUAL VIEW ──
+function showAnnual() {
+  currentKey = null;
+  document.querySelectorAll('.sb-month').forEach(el => el.classList.remove('active'));
+  document.getElementById('btn-annual').style.background = 'var(--ink)';
+  document.getElementById('btn-annual').style.color = 'white';
+
+  const movs = loadMovs();
+  const year = new Date().getFullYear();
+
+  document.getElementById('nav-right').textContent = `Anual ${year}`;
+
+  // Aggregate all months
+  let totalOrigen = 0, totalAplic = 0;
+  const origenTotals = Object.fromEntries(ORIGEN_GROUPS.map(g => [g.id, 0]));
+  const aplicTotals  = Object.fromEntries(APLIC_GROUPS.map(g => [g.id, 0]));
+  let totalDevRemainder = 0;
+  let totalMovs = 0, totalSinCat = 0, totalSinCatVal = 0;
+
+  MK.forEach(m => {
+    const key  = `${m}-${year}`;
+    const mm   = Object.values(movs[key] || {});
+    totalMovs += mm.length;
+
+    ORIGEN_GROUPS.forEach(g => { origenTotals[g.id] += computeGroup(mm, g); });
+    APLIC_GROUPS.forEach(g  => { aplicTotals[g.id]  += computeGroup(mm, g); });
+
+    const totalDevCat     = Math.abs(mm.filter(m=>m.cat==='Dev. deuda bancaria').reduce((s,m)=>s+m.importe,0));
+    const totalDevBancos  = APLIC_GROUPS.filter(g=>g.id.startsWith('dev_')).reduce((s,g) => s + computeGroup(mm, g), 0);
+    totalDevRemainder    += Math.max(totalDevCat - totalDevBancos, 0);
+
+    totalSinCat   += mm.filter(m=>m.cat==='Sin categoría').length;
+    totalSinCatVal += Math.abs(mm.filter(m=>m.cat==='Sin categoría').reduce((s,m)=>s+m.importe,0));
+  });
+
+  totalOrigen = Object.values(origenTotals).reduce((s,v)=>s+v,0);
+  totalAplic  = Object.values(aplicTotals).reduce((s,v)=>s+v,0) + totalDevRemainder;
+  const saldo = totalOrigen - totalAplic;
+
+  // Monthly breakdown table
+  const monthRows = MK.map((m, i) => {
+    const key  = `${m}-${year}`;
+    const mm   = Object.values(movs[key] || {});
+    if (!mm.length) return `<tr style="opacity:.35"><td>${MF[i]}</td><td colspan="4" style="text-align:center;color:var(--ink-faint);font-size:11px">Sin datos</td></tr>`;
+
+    const origen = mm.filter(x=>x.importe>0).reduce((s,x)=>s+x.importe,0);
+    const aplic  = Math.abs(mm.filter(x=>x.importe<0).reduce((s,x)=>s+x.importe,0));
+    const saldo  = origen - aplic;
+    const ventas = computeGroup(mm, ORIGEN_GROUPS.find(g=>g.id==='ventas'));
+    const rrhh   = computeGroup(mm, APLIC_GROUPS.find(g=>g.id==='rrhh'));
+    const sc     = saldo >= 0;
+
+    return `<tr onclick="selectMonth('${key}')" style="cursor:pointer">
+      <td style="font-weight:600">${MF[i].slice(0,3).toUpperCase()+MF[i].slice(3).toLowerCase()}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${fmtE(origen)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--green);font-size:11px">${fmtE(ventas)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--red)">${fmtE(aplic)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim)">${fmtE(rrhh)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:${sc?'var(--green)':'var(--red)'};font-weight:600">${sc?'+':''}${fmtE(saldo)}</td>
+    </tr>`;
+  }).join('');
+
+  const warnHtml = totalSinCat > 0
+    ? `<div class="alert warn">⚠ ${totalSinCat} movimientos sin categorizar en el año por ${fmtE(totalSinCatVal)} — revísalos en Extractos.</div>`
+    : '';
+
+  const renderAnnualRows = (groups, totals, total, extra=[]) => {
+    let rows = groups
+      .filter(g => totals[g.id] > 0)
+      .map(g => `
+        <div class="oaf-row">
+          <span class="oaf-row-label">
+            <div class="oaf-row-dot" style="background:${g.dot}"></div>${g.label}
+          </span>
+          <span>
+            <span class="oaf-row-val">${fmtE(totals[g.id])}</span>
+            <span class="oaf-row-pct">${fmtP(totals[g.id], total)}</span>
+          </span>
+        </div>`).join('');
+    extra.forEach(e => {
+      if (e.val <= 0) return;
+      rows += `<div class="oaf-row">
+        <span class="oaf-row-label"><div class="oaf-row-dot" style="background:#9a5a00"></div>${e.label}</span>
+        <span><span class="oaf-row-val">${fmtE(e.val)}</span><span class="oaf-row-pct">${fmtP(e.val,total)}</span></span>
+      </div>`;
+    });
+    if (!rows) rows = `<div class="oaf-row"><span class="oaf-row-label" style="color:var(--ink-faint);font-style:italic">Sin movimientos</span></div>`;
+    return rows;
+  };
+
+  const extraAplic = totalDevRemainder > 0 ? [{label:'Dev. deuda (otros)', val: totalDevRemainder}] : [];
+
+  document.getElementById('main-inner').innerHTML = `
+    <div class="page-header">
+      <div>
+        <div class="page-title">OAF Anual — ${year}</div>
+        <div class="page-sub">${totalMovs} movimientos totales · click en un mes para ver el detalle</div>
+      </div>
+    </div>
+
+    ${warnHtml}
+
+    <div class="summary-bar">
+      <div class="sum-item">
+        <div class="sum-label">Origen anual</div>
+        <div class="sum-val" style="color:var(--green)">${fmtE(totalOrigen)}</div>
+        <div class="sum-sub">Total entradas ${year}</div>
+      </div>
+      <div class="sum-item">
+        <div class="sum-label">Aplicación anual</div>
+        <div class="sum-val" style="color:var(--red)">${fmtE(totalAplic)}</div>
+        <div class="sum-sub">Total salidas ${year}</div>
+      </div>
+      <div class="sum-item">
+        <div class="sum-label">Saldo neto anual</div>
+        <div class="sum-val" style="color:${saldo>=0?'var(--green)':'var(--red)'}">${saldo>=0?'+':''}${fmtE(saldo)}</div>
+        <div class="sum-sub">${saldo>=0?'Positivo':'Negativo'} en el año</div>
+      </div>
+    </div>
+
+    <!-- OAF ANUAL por partida -->
+    <div class="oaf-wrap" style="margin-bottom:20px">
+      <div class="oaf-col oaf-origen">
+        <div class="oaf-col-header">
+          <span class="oaf-col-title">Origen total</span>
+          <span class="oaf-col-total">${fmtE(totalOrigen)}</span>
+        </div>
+        ${renderAnnualRows(ORIGEN_GROUPS, origenTotals, totalOrigen)}
+      </div>
+      <div class="oaf-col oaf-aplicacion">
+        <div class="oaf-col-header">
+          <span class="oaf-col-title">Aplicación total</span>
+          <span class="oaf-col-total">${fmtE(totalAplic)}</span>
+        </div>
+        ${renderAnnualRows(APLIC_GROUPS, aplicTotals, totalAplic, extraAplic)}
+      </div>
+    </div>
+
+    <!-- MONTHLY BREAKDOWN -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)">Desglose mensual</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-faint)">click para ver detalle</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--ink)">
+            <th style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,.6);padding:8px 14px;text-align:left;font-weight:500">Mes</th>
+            <th style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,.6);padding:8px 14px;text-align:right;font-weight:500">Origen</th>
+            <th style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,.6);padding:8px 14px;text-align:right;font-weight:500">↳ Ventas</th>
+            <th style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,.6);padding:8px 14px;text-align:right;font-weight:500">Aplicación</th>
+            <th style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,.6);padding:8px 14px;text-align:right;font-weight:500">↳ RRHH</th>
+            <th style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,.6);padding:8px 14px;text-align:right;font-weight:500">Saldo</th>
+          </tr>
+        </thead>
+        <tbody style="font-size:12px">
+          ${monthRows}
+          <tr style="background:var(--surface2);border-top:2px solid var(--border-strong);font-weight:700">
+            <td style="padding:9px 14px">TOTAL ${year}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;padding:9px 14px;text-align:right;color:var(--green)">${fmtE(totalOrigen)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;padding:9px 14px;text-align:right;color:var(--green);font-size:11px">${fmtE(origenTotals['ventas'])}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;padding:9px 14px;text-align:right;color:var(--red)">${fmtE(totalAplic)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;padding:9px 14px;text-align:right;font-size:11px">${fmtE(aplicTotals['rrhh'])}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;padding:9px 14px;text-align:right;color:${saldo>=0?'var(--green)':'var(--red)'}">${saldo>=0?'+':''}${fmtE(saldo)}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>`;
 }
 </script>
