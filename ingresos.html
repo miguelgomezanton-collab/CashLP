@@ -129,7 +129,21 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 /* STATUS ALERT */
 .status-alert{padding:10px 14px;border-radius:3px;font-size:12px;display:flex;align-items:center;gap:8px}
 
-/* ANNUAL VIEW */
+/* PIGEONS CAPACITY CARD */
+.pigeons-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.pigeons-card-header{padding:10px 16px;background:#fce8e6;border-bottom:1px solid #f5c0b8;display:flex;align-items:center;justify-content:space-between}
+.pigeons-card-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;color:#a93226}
+.pigeons-formula-row{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid var(--border)}
+.pigeons-formula-row:last-child{border-bottom:none}
+.pigeons-formula-row.result{background:var(--surface2);border-top:1px solid var(--border-strong)}
+.pf-label{font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:8px}
+.pf-sign{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;width:16px;text-align:center;flex-shrink:0}
+.pf-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600}
+.pigeons-comparison{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.pigeons-comp-item{background:var(--surface);padding:12px 14px}
+.pigeons-comp-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px}
+.pigeons-comp-val{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;line-height:1}
+.pigeons-comp-sub{font-size:11px;color:var(--ink-dim);margin-top:3px}
 .annual-wrap{padding:24px 28px 60px;max-width:1000px}
 .annual-title{font-size:20px;font-weight:700;margin-bottom:6px}
 .annual-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-faint);margin-bottom:22px}
@@ -584,6 +598,94 @@ function renderRealPanel(key) {
           ? `${fmtP(pct)} cobrado · Pendiente: ${fmtE(Math.abs(desv))}`
           : `Sin cobros registrados aún en "Entradas clientes"`}
       </div>
+    </div>
+
+    ${renderPigeonsBlock(key, prev)}`;
+}
+
+// ════════════════════════
+// PIGEONS CAPACITY BLOCK
+// ════════════════════════
+function renderPigeonsBlock(key, previsto) {
+  const allMovs  = loadMovs();
+
+  // Cats that count as "salidas fijas"
+  const FIXED_CATS = ['Arrendamientos','Serv. profesionales','Seguros','Publicidad','Suministros','IT y SaaS','Sueldos','Cotizaciones','Servicios bancarios'];
+
+  // Compute avg over all months WITH data (excluding current month)
+  const months = Object.keys(allMovs).filter(k => k !== key && Object.keys(allMovs[k]||{}).length > 0);
+  let avgFijas = 0;
+  if (months.length > 0) {
+    const totals = months.map(k => {
+      const mm = Object.values(allMovs[k]);
+      return mm.filter(m => FIXED_CATS.includes(m.cat) && m.importe < 0).reduce((s,m) => s + Math.abs(m.importe), 0);
+    });
+    avgFijas = totals.reduce((s,v) => s+v, 0) / totals.length;
+  } else {
+    // Fallback: use current month's own fijas if no other months
+    const mm = Object.values(allMovs[key] || {});
+    avgFijas = mm.filter(m => FIXED_CATS.includes(m.cat) && m.importe < 0).reduce((s,m) => s + Math.abs(m.importe), 0);
+  }
+
+  const capacidadPrevista = Math.max(previsto - avgFijas, 0);
+  const nMonths = months.length;
+
+  // Real PIGEONS this month
+  const mm = Object.values(allMovs[key] || {});
+  const pigeonsReales = Math.abs(mm.filter(m => m.cat === 'PIGEONS' && m.importe < 0).reduce((s,m) => s+m.importe, 0));
+  const pigeonsEntradas = mm.filter(m => m.cat === 'PIGEONS' && m.importe > 0).reduce((s,m) => s+m.importe, 0);
+  const desviacion = capacidadPrevista - pigeonsReales;
+  const hayReales  = pigeonsReales > 0;
+
+  const colorCap  = capacidadPrevista > 0 ? '#1a6b3c' : '#c0392b';
+  const colorDesv = desviacion >= 0 ? '#1a6b3c' : '#c0392b';
+
+  return `
+    <div class="pigeons-card">
+      <div class="pigeons-card-header">
+        <span class="pigeons-card-title">PIGEONS — Capacidad de pago prevista</span>
+        ${nMonths > 0 ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#a93226;opacity:.7">Media ${nMonths} mes${nMonths!==1?'es':''} anteriores</span>` : ''}
+      </div>
+
+      <!-- Formula -->
+      <div class="pigeons-formula-row">
+        <span class="pf-label"><span class="pf-sign" style="color:#2563c4">+</span>Cobros previstos del mes</span>
+        <span class="pf-val" style="color:#2563c4">${previsto > 0 ? fmtE(previsto) : '—'}</span>
+      </div>
+      <div class="pigeons-formula-row">
+        <span class="pf-label"><span class="pf-sign" style="color:#c0392b">−</span>Salidas fijas promedio <span style="font-size:10px;color:var(--ink-faint)">(Estructura+RRHH+S.Banc.)</span></span>
+        <span class="pf-val" style="color:#c0392b">${fmtE(avgFijas)}</span>
+      </div>
+      <div class="pigeons-formula-row result">
+        <span class="pf-label" style="font-weight:700;color:var(--ink)">= Capacidad pago PIGEONS</span>
+        <span class="pf-val" style="color:${colorCap};font-size:15px">${fmtE(capacidadPrevista)}</span>
+      </div>
+
+      <!-- Comparison previsto vs real -->
+      <div class="pigeons-comparison">
+        <div class="pigeons-comp-item">
+          <div class="pigeons-comp-label">Capacidad prevista</div>
+          <div class="pigeons-comp-val" style="color:#2563c4">${fmtE(capacidadPrevista)}</div>
+          <div class="pigeons-comp-sub">según proyección</div>
+        </div>
+        <div class="pigeons-comp-item">
+          <div class="pigeons-comp-label">PIGEONS reales pagados</div>
+          <div class="pigeons-comp-val" style="color:${hayReales?'#c0392b':'var(--ink-faint)'}">${hayReales ? fmtE(pigeonsReales) : '—'}</div>
+          <div class="pigeons-comp-sub">${hayReales ? `${desviacion>=0?'Dentro':'Por encima'} de capacidad` : 'Sin pagos a PIGEONS aún'}</div>
+        </div>
+      </div>
+
+      ${hayReales && capacidadPrevista > 0 ? `
+      <div style="padding:9px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11px">
+        <span style="color:var(--ink-dim)">Desviación sobre capacidad</span>
+        <span style="color:${colorDesv};font-weight:600">${desviacion>=0?'+':''}${fmtE(desviacion)} ${desviacion>=0?'disponible':'por encima'}</span>
+      </div>` : ''}
+
+      ${pigeonsEntradas > 0 ? `
+      <div style="padding:9px 14px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);display:flex;justify-content:space-between">
+        <span>Cobros recibidos de PIGEONS</span>
+        <span style="color:#1a6b3c;font-weight:600">+${fmtE(pigeonsEntradas)}</span>
+      </div>` : ''}
     </div>`;
 }
 
