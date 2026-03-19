@@ -148,26 +148,26 @@ footer{margin-top:auto;padding:28px 60px;border-top:1px solid var(--border);disp
   </a>
 
   <!-- 03 OAF -->
-  <div class="card soon" style="--ca:#a78bfa">
+  <a class="card" href="oaf.html" style="--ca:#a78bfa">
     <div class="card-inner">
       <div class="card-num">03 — ORIGEN Y APLICACIÓN DE FONDOS</div>
       <span class="card-icon">⚖️</span>
       <div class="card-title">OAF — Origen y Aplicación de Fondos</div>
-      <div class="card-desc">Resumen mensual de de dónde vienen y adónde van los fondos. Ventas, deuda, pigeons, RRHH, estructura e impuestos con comparativa mes a mes.</div>
+      <div class="card-desc">Resumen mensual de dónde vienen y adónde van los fondos. Ventas, deuda, PIGEONS, RRHH, estructura e impuestos generado automáticamente de los extractos.</div>
       <div class="stats">
-        <div class="stat"><div class="stat-lbl">Origen</div><div class="stat-val">—</div></div>
-        <div class="stat"><div class="stat-lbl">Aplicación</div><div class="stat-val">—</div></div>
-        <div class="stat"><div class="stat-lbl">Saldo neto</div><div class="stat-val">—</div></div>
+        <div class="stat"><div class="stat-lbl">Origen</div><div class="stat-val" id="s-origen">—</div></div>
+        <div class="stat"><div class="stat-lbl">Aplicación</div><div class="stat-val" id="s-aplic">—</div></div>
+        <div class="stat"><div class="stat-lbl">Saldo neto</div><div class="stat-val" id="s-saldo">—</div></div>
       </div>
     </div>
     <div class="card-foot">
       <div class="foot-status">
-        <span class="pill pill-soon">PRÓXIMAMENTE</span>
-        <span class="foot-text">En construcción</span>
+        <span class="pill" id="p-oaf">SIN DATOS</span>
+        <span class="foot-text" id="t-oaf">Importa extractos para generar el OAF</span>
       </div>
       <span class="foot-arrow">→</span>
     </div>
-  </div>
+  </a>
 
   <!-- 04 CUENTA TESORERÍA -->
   <div class="card soon" style="--ca:#fbbf24">
@@ -231,6 +231,21 @@ window.onload=()=>{
     document.getElementById('p-imp').className='pill pill-on';
     document.getElementById('p-imp').textContent='ACTIVO';
     document.getElementById('t-imp').textContent=`Última subida: ${last.toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}`;
+  }
+
+  // Card 03 — OAF
+  if(mm.length){
+    const origen = mm.filter(m=>m.importe>0).reduce((s,m)=>s+m.importe,0);
+    const aplic  = Math.abs(mm.filter(m=>m.importe<0).reduce((s,m)=>s+m.importe,0));
+    const saldo  = origen - aplic;
+    const fmtK   = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).format(Math.round(n))+'€';
+    document.getElementById('s-origen').textContent = fmtK(origen);
+    document.getElementById('s-aplic').textContent  = fmtK(aplic);
+    document.getElementById('s-saldo').textContent  = (saldo>=0?'+':'')+fmtK(saldo);
+    document.getElementById('s-saldo').style.color  = saldo>=0?'var(--green)':'var(--red)';
+    document.getElementById('p-oaf').className='pill pill-on';
+    document.getElementById('p-oaf').textContent='ACTIVO';
+    document.getElementById('t-oaf').textContent=`${MK[m]} ${y} · ${mm.length} movimientos`;
   }
 
   const kb=(new Blob([JSON.stringify(localStorage)]).size/1024).toFixed(1);
