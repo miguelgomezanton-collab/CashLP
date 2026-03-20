@@ -110,6 +110,7 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 .empty-title{font-size:14px;font-weight:600;color:var(--ink-dim);margin-bottom:6px}
 .empty-sub{font-size:12px;line-height:1.6}
 </style>
+<script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
 </head>
 <body>
 
@@ -192,22 +193,43 @@ function computeGroup(movs, group) {
 }
 
 function computeCF(movs) {
-  const explIn  = EXPLOT_IN.map(g  => ({ ...g, val: computeGroup(movs, g) }));
-  const explOut = EXPLOT_OUT.map(g => ({ ...g, val: computeGroup(movs, g) }));
-  const finIn   = FINANC_IN.map(g  => ({ ...g, val: computeGroup(movs, g) }));
-  const finOut  = FINANC_OUT.map(g => ({ ...g, val: computeGroup(movs, g) }));
+  // Excluir traspasos internos — movimientos entre cuentas propias, no son flujos reales
+  const operativos = movs.filter(m => m.cat !== 'Traspasos internos');
+
+  const explIn  = EXPLOT_IN.map(g  => ({ ...g, val: computeGroup(operativos, g) }));
+  const explOut = EXPLOT_OUT.map(g => ({ ...g, val: computeGroup(operativos, g) }));
+  const finIn   = FINANC_IN.map(g  => ({ ...g, val: computeGroup(operativos, g) }));
+  const finOut  = FINANC_OUT.map(g => ({ ...g, val: computeGroup(operativos, g) }));
 
   const totalExplIn  = explIn.reduce((s,g)  => s+g.val, 0);
   const totalExplOut = explOut.reduce((s,g) => s+g.val, 0);
-  const fcExplot     = totalExplIn - totalExplOut;
 
   const totalFinIn   = finIn.reduce((s,g)  => s+g.val, 0);
   const totalFinOut  = finOut.reduce((s,g) => s+g.val, 0);
-  const fcFinanc     = totalFinIn - totalFinOut;
 
-  const fcTotal = fcExplot + fcFinanc;
+  // Real totals sin traspasos (source of truth)
+  const realIn  = operativos.filter(m=>m.importe>0).reduce((s,m)=>s+m.importe,0);
+  const realOut = Math.abs(operativos.filter(m=>m.importe<0).reduce((s,m)=>s+m.importe,0));
 
-  return { explIn, explOut, finIn, finOut, totalExplIn, totalExplOut, fcExplot, totalFinIn, totalFinOut, fcFinanc, fcTotal };
+  // Unmapped remainder
+  const mappedIn    = totalExplIn  + totalFinIn;
+  const mappedOut   = totalExplOut + totalFinOut;
+  const unmappedIn  = Math.max(realIn  - mappedIn,  0);
+  const unmappedOut = Math.max(realOut - mappedOut, 0);
+
+  const totalExplInFinal  = totalExplIn  + unmappedIn;
+  const totalExplOutFinal = totalExplOut + unmappedOut;
+
+  const fcExplot = totalExplInFinal  - totalExplOutFinal;
+  const fcFinanc = totalFinIn - totalFinOut;
+  const fcTotal  = fcExplot + fcFinanc;
+
+  if (unmappedIn  > 1) explIn.push( { id:'otros_in',  label:'Otros entradas', dot:'#a8a8a2', val: unmappedIn  });
+  if (unmappedOut > 1) explOut.push({ id:'otros_out', label:'Otros salidas',  dot:'#a8a8a2', val: unmappedOut });
+
+  return { explIn, explOut, finIn, finOut,
+    totalExplIn: totalExplInFinal, totalExplOut: totalExplOutFinal,
+    fcExplot, totalFinIn, totalFinOut, fcFinanc, fcTotal };
 }
 
 // ── INIT ──

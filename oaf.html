@@ -90,6 +90,7 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 .alert{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:4px;font-size:12px;margin-bottom:18px}
 .alert.warn{background:var(--amber-bg);border:1px solid #f0d090;color:var(--amber)}
 </style>
+<script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
 </head>
 <body>
 
@@ -141,7 +142,7 @@ const ORIGEN_GROUPS = [
   { id:'ventas',       label:'Ventas',                dot:'#1a6b3c', cats:['Entradas clientes'] },
   { id:'pigeons_in',   label:'PIGEONS (cobros)',       dot:'#c0392b', cats:['PIGEONS'], onlyPos:true },
   { id:'financiacion', label:'Financiación',           dot:'#2563c4', cats:['Financiación'] },
-  { id:'otros_in',     label:'Otros ingresos',         dot:'#a8a8a2', cats:['Traspasos internos'], onlyPos:true },
+  { id:'otros_in',     label:'Otros ingresos',         dot:'#a8a8a2', cats:['Otros gastos','Sin categoría'], onlyPos:true },
 ];
 
 // ── APLICACIÓN groups ──
@@ -157,6 +158,7 @@ const APLIC_GROUPS = [
   { id:'irpf',         label:'Impuestos IRPF',         dot:'#b5620a', cats:['IRPF'] },
   { id:'iva',          label:'Impuestos IVA',          dot:'#b5620a', cats:['IVA'] },
   { id:'otros_imp',    label:'Otros Impuestos',        dot:'#b5620a', cats:['Otros impuestos'], filter: c => !c.toLowerCase().includes('abonare') },
+  { id:'otros_sal',    label:'Otros gastos',           dot:'#a8a8a2', cats:['Otros gastos','Sin categoría'], onlyNeg:true },
 ];
 
 // ── INIT ──
@@ -197,6 +199,7 @@ function selectMonth(key) {
 function computeGroup(movs, group) {
   return movs
     .filter(m => {
+      if (m.cat === 'Traspasos internos') return false; // excluir movimientos internos
       if (!group.cats.includes(m.cat)) return false;
       if (group.onlyPos  && m.importe <= 0) return false;
       if (group.onlyNeg  && m.importe >= 0) return false;
@@ -233,20 +236,25 @@ function renderOAF(key) {
   const origenData = ORIGEN_GROUPS.map(g => ({ ...g, val: computeGroup(movs, g) }));
   const aplicData  = APLIC_GROUPS.map(g => ({ ...g, val: computeGroup(movs, g) }));
 
-  // Handle deuda devolution groups — if all zero, fallback to all dev. deuda bancaria
+  // Real totals — excluir traspasos internos (movimientos entre cuentas propias)
+  const operativos = movs.filter(m => m.cat !== 'Traspasos internos');
+  const realOrigen = operativos.filter(m=>m.importe>0).reduce((s,m)=>s+m.importe,0);
+  const realAplic  = Math.abs(operativos.filter(m=>m.importe<0).reduce((s,m)=>s+m.importe,0));
+  const saldo      = realOrigen - realAplic;
+
+  // Handle deuda devolution remainder
   const totalDevBancos = aplicData.filter(g=>g.id.startsWith('dev_')).reduce((s,g)=>s+g.val,0);
   const totalDevCat    = Math.abs(movs.filter(m=>m.cat==='Dev. deuda bancaria').reduce((s,m)=>s+m.importe,0));
-  const devRemainder   = totalDevCat - totalDevBancos;
+  const devRemainder   = Math.max(totalDevCat - totalDevBancos, 0);
 
-  const totalOrigen = origenData.reduce((s,g) => s+g.val, 0);
-  const totalAplic  = aplicData.reduce((s,g) => s+g.val, 0) + (devRemainder > 0 ? devRemainder : 0);
-  const saldo       = totalOrigen - totalAplic;
+  // Unmapped: difference between real total and what groups captured
+  const groupsOrigenTotal = origenData.reduce((s,g)=>s+g.val,0);
+  const groupsAplicTotal  = aplicData.reduce((s,g)=>s+g.val,0) + devRemainder;
+  const unmappedOrigen    = Math.max(realOrigen - groupsOrigenTotal, 0);
+  const unmappedAplic     = Math.max(realAplic  - groupsAplicTotal,  0);
 
-  // Warn if uncategorized movements are large
-  const sinCat = movs.filter(m=>m.cat==='Sin categoría');
-  const sinCatTotal = Math.abs(sinCat.reduce((s,m)=>s+m.importe,0));
-  const warnHtml = sinCat.length > 0
-    ? `<div class="alert warn">⚠ ${sinCat.length} movimiento${sinCat.length!==1?'s':''} sin categorizar por ${fmtE(sinCatTotal)} — revísalos en Extractos para mejorar la precisión del OAF.</div>`
+  const warnHtml = (unmappedOrigen > 1 || unmappedAplic > 1)
+    ? `<div class="alert warn">⚠ ${fmtE(unmappedOrigen + unmappedAplic)} en movimientos sin mapear — aparecen como "No mapeado" para que el OAF cuadre con el extracto.</div>`
     : '';
 
   const renderRows = (groups, total, extra=[]) => {
@@ -280,7 +288,11 @@ function renderOAF(key) {
     return rows;
   };
 
-  const extraAplic = devRemainder > 0 ? [{label:'Dev. deuda (otros)', val: devRemainder}] : [];
+  const extraAplic = [
+    ...(devRemainder > 0 ? [{label:'Dev. deuda (otros)', val: devRemainder, dot:'#9a5a00'}] : []),
+    ...(unmappedAplic > 1 ? [{label:'No mapeado', val: unmappedAplic, dot:'#a8a8a2'}] : []),
+  ];
+  const extraOrigen = unmappedOrigen > 1 ? [{label:'No mapeado', val: unmappedOrigen, dot:'#a8a8a2'}] : [];
 
   document.getElementById('main-inner').innerHTML = `
     <div class="page-header">
@@ -296,12 +308,12 @@ function renderOAF(key) {
     <div class="summary-bar">
       <div class="sum-item">
         <div class="sum-label">Origen (entradas)</div>
-        <div class="sum-val" style="color:var(--green)">${fmtE(totalOrigen)}</div>
+        <div class="sum-val" style="color:var(--green)">${fmtE(realOrigen)}</div>
         <div class="sum-sub">${movs.filter(m=>m.importe>0).length} movimientos de entrada</div>
       </div>
       <div class="sum-item">
         <div class="sum-label">Aplicación (salidas)</div>
-        <div class="sum-val" style="color:var(--red)">${fmtE(totalAplic)}</div>
+        <div class="sum-val" style="color:var(--red)">${fmtE(realAplic)}</div>
         <div class="sum-sub">${movs.filter(m=>m.importe<0).length} movimientos de salida</div>
       </div>
       <div class="sum-item">
@@ -313,25 +325,20 @@ function renderOAF(key) {
 
     <!-- OAF TWO COLUMNS -->
     <div class="oaf-wrap">
-
-      <!-- ORIGEN -->
       <div class="oaf-col oaf-origen">
         <div class="oaf-col-header">
           <span class="oaf-col-title">Origen</span>
-          <span class="oaf-col-total">${fmtE(totalOrigen)}</span>
+          <span class="oaf-col-total">${fmtE(realOrigen)}</span>
         </div>
-        ${renderRows(origenData, totalOrigen)}
+        ${renderRows(origenData, realOrigen, extraOrigen)}
       </div>
-
-      <!-- APLICACIÓN -->
       <div class="oaf-col oaf-aplicacion">
         <div class="oaf-col-header">
           <span class="oaf-col-title">Aplicación</span>
-          <span class="oaf-col-total">${fmtE(totalAplic)}</span>
+          <span class="oaf-col-total">${fmtE(realAplic)}</span>
         </div>
-        ${renderRows(aplicData, totalAplic, extraAplic)}
+        ${renderRows(aplicData, realAplic, extraAplic)}
       </div>
-
     </div>`;
 }
 // ── ANNUAL VIEW ──

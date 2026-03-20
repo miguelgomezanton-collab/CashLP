@@ -246,7 +246,7 @@ td{padding:8px 12px;font-size:12px;vertical-align:middle}
       <div class="stat-item"><div class="stat-label">Movimientos</div><div class="stat-value" id="st-total">—</div></div>
       <div class="stat-item"><div class="stat-label">Entradas</div><div class="stat-value pos" id="st-in">—</div></div>
       <div class="stat-item"><div class="stat-label">Salidas</div><div class="stat-value neg" id="st-out">—</div></div>
-      <div class="stat-item"><div class="stat-label">Saldo neto</div><div class="stat-value" id="st-net">—</div></div>
+      <div class="stat-item"><div class="stat-label">Saldo neto real</div><div class="stat-value" id="st-net" title="Excluye traspasos internos entre cuentas propias">—</div></div>
       <div class="stat-item"><div class="stat-label">Por banco</div><div class="stat-value" id="st-banks" style="font-size:11px">—</div></div>
       <div class="stat-item"><div class="stat-label">Sin categoría</div><div class="stat-value" id="st-uncat">—</div></div>
     </div>
@@ -629,10 +629,18 @@ function selectMonth(key) {
 
 function updateStats(movs) {
   const fmt = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).format(Math.round(n))+'€';
+
+  // Totales brutos (todos los movimientos incluyendo traspasos)
   const entradas = movs.filter(m=>m.importe>0).reduce((s,m)=>s+m.importe,0);
   const salidas  = Math.abs(movs.filter(m=>m.importe<0).reduce((s,m)=>s+m.importe,0));
-  const saldo    = entradas - salidas;
-  const uncat    = movs.filter(m=>m.cat==='Sin categoría').length;
+
+  // Saldo neto real — excluir traspasos internos entre cuentas propias
+  const operativos = movs.filter(m => m.cat !== 'Traspasos internos');
+  const entOp = operativos.filter(m=>m.importe>0).reduce((s,m)=>s+m.importe,0);
+  const salOp = Math.abs(operativos.filter(m=>m.importe<0).reduce((s,m)=>s+m.importe,0));
+  const saldo = entOp - salOp;
+
+  const uncat = movs.filter(m=>m.cat==='Sin categoría').length;
 
   // Per-bank breakdown
   const banks = [...new Set(movs.map(m=>m.banco||'').filter(Boolean))];
