@@ -60,7 +60,7 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 .main-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-faint);margin-top:4px}
 
 /* STATS BAR */
-.stats-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
+.stats-bar{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
 .stat-item{background:var(--surface);padding:12px 16px}
 .stat-label{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px}
 .stat-value{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--ink);line-height:1}
@@ -194,6 +194,7 @@ td{padding:8px 12px;font-size:12px;vertical-align:middle}
 .del-btn{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:2px}
 .del-btn:hover{color:var(--red);background:var(--red-bg)}
 </style>
+<script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
 </head>
 <body>
 
@@ -246,6 +247,7 @@ td{padding:8px 12px;font-size:12px;vertical-align:middle}
       <div class="stat-item"><div class="stat-label">Entradas</div><div class="stat-value pos" id="st-in">—</div></div>
       <div class="stat-item"><div class="stat-label">Salidas</div><div class="stat-value neg" id="st-out">—</div></div>
       <div class="stat-item"><div class="stat-label">Saldo neto</div><div class="stat-value" id="st-net">—</div></div>
+      <div class="stat-item"><div class="stat-label">Por banco</div><div class="stat-value" id="st-banks" style="font-size:11px">—</div></div>
       <div class="stat-item"><div class="stat-label">Sin categoría</div><div class="stat-value" id="st-uncat">—</div></div>
     </div>
 
@@ -254,6 +256,9 @@ td{padding:8px 12px;font-size:12px;vertical-align:middle}
       <input class="filter-input" id="f-search" type="text" placeholder="Buscar concepto..." oninput="renderTable()">
       <select class="filter-select" id="f-cat" onchange="renderTable()">
         <option value="">Todas las categorías</option>
+      </select>
+      <select class="filter-select" id="f-banco" onchange="renderTable()">
+        <option value="">Todos los bancos</option>
       </select>
       <div class="chip on" onclick="setTypeFilter('',this)">Todo</div>
       <div class="chip" onclick="setTypeFilter('in',this)">Entradas</div>
@@ -283,6 +288,7 @@ td{padding:8px 12px;font-size:12px;vertical-align:middle}
         <thead>
           <tr>
             <th>Fecha</th>
+            <th style="width:65px">Banco</th>
             <th>Concepto</th>
             <th style="width:210px">Categoría</th>
             <th class="right" style="width:110px">Importe</th>
@@ -627,6 +633,16 @@ function updateStats(movs) {
   const saldo    = entradas - salidas;
   const uncat    = movs.filter(m=>m.cat==='Sin categoría').length;
 
+  // Per-bank breakdown
+  const banks = [...new Set(movs.map(m=>m.banco||'').filter(Boolean))];
+  const bankSub = banks.length > 1
+    ? banks.map(b => {
+        const bc = BANK_COLORS_TABLE[b] || {bg:'#f5f5f3',text:'#6b6b65'};
+        const s  = movs.filter(m=>m.banco===b).reduce((s,m)=>s+m.importe,0);
+        return `<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px;background:${bc.bg};color:${bc.text};margin-right:3px">${b}: ${s>=0?'+':''}${fmt(s)}</span>`;
+      }).join('')
+    : `${banks[0]||'—'}`;
+
   document.getElementById('st-total').textContent = movs.length || '—';
   document.getElementById('st-in').textContent    = entradas > 0 ? fmt(entradas) : '—';
   document.getElementById('st-out').textContent   = salidas  > 0 ? fmt(salidas)  : '—';
@@ -634,6 +650,12 @@ function updateStats(movs) {
   document.getElementById('st-net').className     = 'stat-value ' + (saldo>=0?'pos':'neg');
   document.getElementById('st-uncat').textContent = uncat || '—';
   document.getElementById('st-uncat').style.color = uncat > 0 ? 'var(--amber)' : 'var(--ink)';
+
+  // Update banks stat in stats bar
+  const banksStat = document.getElementById('st-banks');
+  if (banksStat) {
+    banksStat.innerHTML = banks.length > 0 ? bankSub : '—';
+  }
 }
 
 function populateCatFilter(movs) {
@@ -654,32 +676,56 @@ function setTypeFilter(t, el) {
   renderTable();
 }
 
+const BANK_COLORS_TABLE = {
+  BSCH:      {bg:'#ffeef0',text:'#c0001e'},
+  BBVA:      {bg:'#eef2ff',text:'#1a4ab0'},
+  SABADELL:  {bg:'#eef9ff',text:'#006699'},
+  BANKINTER: {bg:'#fff0ee',text:'#c0390a'},
+  CAIXABANK: {bg:'#fff8e8',text:'#8a6000'},
+  WALLET:    {bg:'#f2eef9',text:'#5b2d8a'},
+};
+
 function renderTable() {
   if (!currentMonth) return;
   const movs = loadMovs();
   const all  = Object.values(movs[currentMonth] || {});
 
-  const search = document.getElementById('f-search').value.toLowerCase();
-  const cat    = document.getElementById('f-cat').value;
+  const search  = document.getElementById('f-search').value.toLowerCase();
+  const cat     = document.getElementById('f-cat').value;
+  const bancoF  = document.getElementById('f-banco')?.value || '';
 
   let filtered = all.filter(m => {
     if (typeFilter === 'in'    && m.importe <= 0) return false;
     if (typeFilter === 'out'   && m.importe >= 0) return false;
     if (typeFilter === 'uncat' && m.cat !== 'Sin categoría') return false;
-    if (cat && m.cat !== cat) return false;
+    if (cat    && m.cat   !== cat)    return false;
+    if (bancoF && (m.banco||'') !== bancoF) return false;
     if (search && !m.concepto.toLowerCase().includes(search)) return false;
     return true;
   }).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
 
   document.getElementById('f-count').textContent = `${filtered.length} de ${all.length}`;
 
+  // Populate banco filter dynamically
+  const bancoSel = document.getElementById('f-banco');
+  if (bancoSel) {
+    const banks = [...new Set(all.map(m=>m.banco||'').filter(Boolean))].sort();
+    const curB  = bancoSel.value;
+    bancoSel.innerHTML = '<option value="">Todos los bancos</option>' +
+      banks.map(b=>`<option value="${b}" ${b===curB?'selected':''}>${b}</option>`).join('');
+  }
+
   const fmt = n => (n>0?'+':'')+new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+'€';
 
   document.getElementById('mov-tbody').innerHTML = filtered.map(m => {
-    const cd  = catDef(m.cat);
-    const short = m.concepto.length > 55 ? m.concepto.slice(0,55)+'…' : m.concepto;
+    const cd    = catDef(m.cat);
+    const bc    = m.banco ? (BANK_COLORS_TABLE[m.banco] || {bg:'#f5f5f3',text:'#6b6b65'}) : null;
+    const short = m.concepto.length > 50 ? m.concepto.slice(0,50)+'…' : m.concepto;
     return `<tr ${m.manualCat?'class="edited"':''} id="tr-${m.hash}">
       <td class="td-fecha">${m.fecha}</td>
+      <td style="text-align:center">
+        ${bc ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;padding:2px 5px;border-radius:2px;background:${bc.bg};color:${bc.text};white-space:nowrap">${m.banco}</span>` : ''}
+      </td>
       <td class="td-concepto"><div class="concepto-inner" title="${m.concepto}">${short}</div></td>
       <td>
         <div class="cat-wrap">
@@ -696,7 +742,7 @@ function renderTable() {
       <td class="td-importe ${m.importe>0?'pos':'neg'}">${fmt(m.importe)}</td>
       <td class="td-edit">${m.manualCat?'<span class="edit-icon" title="Editado manualmente">✎</span>':''}</td>
     </tr>`;
-  }).join('') || `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:12px">Sin resultados</td></tr>`;
+  }).join('') || `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:12px">Sin resultados</td></tr>`;
 
   if (all.length > 0) {
     document.getElementById('empty-state').style.display = 'none';
@@ -836,6 +882,7 @@ function parseXLSX(buffer) {
   const iF = (() => { let i = headers.findIndex(h=>h.includes('fecha')&&h.includes('operaci')); return i>=0?i:headers.findIndex(h=>h.includes('fecha')); })();
   const iC = (() => { let i = headers.findIndex(h=>h.includes('concepto')||h.includes('descripci')); return i>=0?i:iF>=0?iF+1:1; })();
   const iI = (() => { let i = headers.findIndex(h=>h==='importe'||(h.includes('importe')&&!h.includes('saldo'))); return i>=0?i:iC+1; })();
+  const iB = headers.findIndex(h => h === 'banco' || h === 'bank' || h === 'entidad');
 
   const fmtDate = v => {
     if (!v) return '';
@@ -850,11 +897,12 @@ function parseXLSX(buffer) {
     if (!row || row.every(c=>c===null||c==='')) continue;
     const fecha    = fmtDate(row[iF>=0?iF:0]);
     const concepto = (row[iC]||'').toString().trim();
+    const banco    = iB >= 0 ? (row[iB]||'').toString().trim().toUpperCase() : '';
     let   importe  = row[iI];
     if (typeof importe === 'string') importe = parseFloat(importe.replace(/\./g,'').replace(',','.'));
     else importe = parseFloat(importe);
     if (!fecha || !concepto || concepto==='-' || isNaN(importe)) continue;
-    rows.push({fecha, concepto, importe});
+    rows.push({fecha, concepto, importe, banco});
   }
   return rows;
 }
@@ -870,14 +918,16 @@ function parseCSV(text) {
   const iF = headers.findIndex(h=>h.includes('fecha'));
   const iC = headers.findIndex(h=>h.includes('concepto')||h.includes('descripci'));
   const iI = headers.findIndex(h=>h.includes('importe'));
+  const iB = headers.findIndex(h=>h==='banco'||h==='bank'||h==='entidad');
   const rows = [];
   for (let i=hRow+1; i<lines.length; i++) {
     const cols = lines[i].split(delim).map(c=>c.replace(/"/g,'').trim());
     const fecha    = cols[iF>=0?iF:0]||'';
     const concepto = cols[iC>=0?iC:1]||'';
+    const banco    = iB>=0 ? (cols[iB]||'').toUpperCase() : '';
     const importe  = parseFloat((cols[iI>=0?iI:2]||'0').replace(/\./g,'').replace(',','.'));
     if (!fecha||!concepto||isNaN(importe)) continue;
-    rows.push({fecha, concepto, importe});
+    rows.push({fecha, concepto, importe, banco});
   }
   return rows;
 }
@@ -905,7 +955,15 @@ function buildPendingImport(rows, filename) {
   const existingHashes = new Set(Object.keys(existing));
 
   const allRows = (byMonth[primaryMonth] || []).map(r => {
-    const result = categorize(r.concepto, r.importe);
+    // WALLET special logic: entries = Traspasos internos, exits = PIGEONS
+    let result;
+    if (r.banco === 'WALLET') {
+      result = r.importe > 0
+        ? { cat: 'Traspasos internos', conf: 'high' }
+        : { cat: 'PIGEONS',            conf: 'high' };
+    } else {
+      result = categorize(r.concepto, r.importe);
+    }
     const h = hash(r.fecha, r.concepto, r.importe);
     return {...r, cat: result.cat, conf: result.conf, hash: h, dup: existingHashes.has(h)};
   });
