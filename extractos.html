@@ -335,7 +335,7 @@ window.addEventListener('DOMContentLoaded', () => { fbSync(); });
       <div class="stat-item"><div class="stat-label">Movimientos</div><div class="stat-value" id="st-total">—</div></div>
       <div class="stat-item"><div class="stat-label">Entradas</div><div class="stat-value pos" id="st-in">—</div></div>
       <div class="stat-item"><div class="stat-label">Salidas</div><div class="stat-value neg" id="st-out">—</div></div>
-      <div class="stat-item"><div class="stat-label">Saldo neto real</div><div class="stat-value" id="st-net" title="Excluye traspasos internos entre cuentas propias">—</div></div>
+      <div class="stat-item"><div class="stat-label">Saldo neto</div><div class="stat-value" id="st-net">—</div></div>
       <div class="stat-item"><div class="stat-label">Por banco</div><div class="stat-value" id="st-banks" style="font-size:11px">—</div></div>
       <div class="stat-item"><div class="stat-label">Sin categoría</div><div class="stat-value" id="st-uncat">—</div></div>
     </div>
@@ -719,41 +719,35 @@ function selectMonth(key) {
 function updateStats(movs) {
   const fmt = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).format(Math.round(n))+'€';
 
-  // Totales brutos (todos los movimientos incluyendo traspasos)
-  const entradas = movs.filter(m=>m.importe>0).reduce((s,m)=>s+m.importe,0);
-  const salidas  = Math.abs(movs.filter(m=>m.importe<0).reduce((s,m)=>s+m.importe,0));
-
-  // Saldo neto real — excluir traspasos internos entre cuentas propias
+  // Excluir traspasos internos de todos los cálculos
   const operativos = movs.filter(m => m.cat !== 'Traspasos internos');
-  const entOp = operativos.filter(m=>m.importe>0).reduce((s,m)=>s+m.importe,0);
-  const salOp = Math.abs(operativos.filter(m=>m.importe<0).reduce((s,m)=>s+m.importe,0));
-  const saldo = entOp - salOp;
 
-  const uncat = movs.filter(m=>m.cat==='Sin categoría').length;
+  const entradas = operativos.filter(m=>m.importe>0).reduce((s,m)=>s+m.importe,0);
+  const salidas  = Math.abs(operativos.filter(m=>m.importe<0).reduce((s,m)=>s+m.importe,0));
+  const saldo    = entradas - salidas;
+  const uncat    = operativos.filter(m=>m.cat==='Sin categoría').length;
+  const traspasos = movs.length - operativos.length;
 
-  // Per-bank breakdown
-  const banks = [...new Set(movs.map(m=>m.banco||'').filter(Boolean))];
+  // Per-bank breakdown (también sin traspasos)
+  const banks = [...new Set(operativos.map(m=>m.banco||'').filter(Boolean))];
   const bankSub = banks.length > 1
     ? banks.map(b => {
         const bc = BANK_COLORS_TABLE[b] || {bg:'#f5f5f3',text:'#6b6b65'};
-        const s  = movs.filter(m=>m.banco===b).reduce((s,m)=>s+m.importe,0);
+        const s  = operativos.filter(m=>m.banco===b).reduce((s,m)=>s+m.importe,0);
         return `<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px;background:${bc.bg};color:${bc.text};margin-right:3px">${b}: ${s>=0?'+':''}${fmt(s)}</span>`;
       }).join('')
     : `${banks[0]||'—'}`;
 
-  document.getElementById('st-total').textContent = movs.length || '—';
+  document.getElementById('st-total').textContent = `${operativos.length}${traspasos>0?' ('+traspasos+' int.)':''}`;
   document.getElementById('st-in').textContent    = entradas > 0 ? fmt(entradas) : '—';
   document.getElementById('st-out').textContent   = salidas  > 0 ? fmt(salidas)  : '—';
-  document.getElementById('st-net').textContent   = movs.length ? (saldo>=0?'+':'')+fmt(saldo) : '—';
+  document.getElementById('st-net').textContent   = operativos.length ? (saldo>=0?'+':'')+fmt(saldo) : '—';
   document.getElementById('st-net').className     = 'stat-value ' + (saldo>=0?'pos':'neg');
   document.getElementById('st-uncat').textContent = uncat || '—';
   document.getElementById('st-uncat').style.color = uncat > 0 ? 'var(--amber)' : 'var(--ink)';
 
-  // Update banks stat in stats bar
   const banksStat = document.getElementById('st-banks');
-  if (banksStat) {
-    banksStat.innerHTML = banks.length > 0 ? bankSub : '—';
-  }
+  if (banksStat) banksStat.innerHTML = banks.length > 0 ? bankSub : '—';
 }
 
 function populateCatFilter(movs) {
