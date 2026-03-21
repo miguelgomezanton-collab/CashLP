@@ -110,6 +110,95 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 .empty-title{font-size:14px;font-weight:600;color:var(--ink-dim);margin-bottom:6px}
 .empty-sub{font-size:12px;line-height:1.6}
 </style>
+<script type="module">
+// ════════════════════════════════════════════════════════
+// FIREBASE ADAPTER
+// ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// FIREBASE ADAPTER — sincroniza localStorage ↔ Firestore
+// Incluir este bloque al inicio del <script> en cada HTML
+// ════════════════════════════════════════════════════════
+
+const _FB_CFG = {
+  apiKey: "AIzaSyAB7JtnIUPpenmeSvmbXB3coLMcrv59Gsc",
+  authDomain: "lpcash-2a547.firebaseapp.com",
+  projectId: "lpcash-2a547",
+  storageBucket: "lpcash-2a547.firebasestorage.app",
+  messagingSenderId: "283983626636",
+  appId: "1:283983626636:web:775a3d0df7e89f9b4696a9"
+};
+
+let _db = null;
+let _fbReady = false;
+
+async function _initFB() {
+  if (_db) return _db;
+  try {
+    const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+    const { getFirestore, doc, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const app = getApps().length ? getApps()[0] : initializeApp(_FB_CFG);
+    _db = { fs: getFirestore(app), doc, getDoc, setDoc };
+    _fbReady = true;
+    return _db;
+  } catch(e) {
+    console.warn('Firebase no disponible, usando solo localStorage', e);
+    return null;
+  }
+}
+
+// Sincronizar al iniciar — descarga datos de Firestore a localStorage
+async function fbSync() {
+  const fb = await _initFB();
+  if (!fb) return;
+  const keys = ['lp_movs_v3','lp_imports_v3','lp_rules_v3','lp_ingresos_v1','lp_deuda_v1'];
+  for (const k of keys) {
+    try {
+      const snap = await fb.getDoc(fb.doc(fb.fs, 'lpcash', k));
+      if (snap.exists()) {
+        const remoto = snap.data().value;
+        const local  = localStorage.getItem(k);
+        // Si remoto es más reciente (tiene más datos), lo usamos
+        const remotoStr = JSON.stringify(remoto);
+        if (remotoStr !== local) {
+          localStorage.setItem(k, remotoStr);
+        }
+      }
+    } catch(e) { console.warn('sync error', k, e); }
+  }
+}
+
+// Guardar en localStorage + Firestore
+async function fbSave(key, value) {
+  const str = JSON.stringify(value);
+  localStorage.setItem(key, str);
+  const fb = await _initFB();
+  if (!fb) return;
+  try {
+    await fb.setDoc(fb.doc(fb.fs, 'lpcash', key), { value });
+  } catch(e) { console.warn('fbSave error', key, e); }
+}
+
+// Wrapper: reemplaza localStorage.setItem para las claves LP
+const _origSet = localStorage.setItem.bind(localStorage);
+const LP_KEYS = new Set(['lp_movs_v3','lp_imports_v3','lp_rules_v3','lp_ingresos_v1','lp_deuda_v1']);
+
+localStorage.setItem = function(key, value) {
+  _origSet(key, value);
+  if (LP_KEYS.has(key)) {
+    // Guardar en Firebase de forma asíncrona
+    _initFB().then(fb => {
+      if (!fb) return;
+      try {
+        const parsed = JSON.parse(value);
+        fb.setDoc(fb.doc(fb.fs, 'lpcash', key), { value: parsed });
+      } catch(e) { /* ignorar */ }
+    });
+  }
+};
+
+window.addEventListener('DOMContentLoaded', () => { fbSync(); });
+</script>
+
 <script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
 </head>
 <body>
