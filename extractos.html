@@ -583,8 +583,8 @@ function learnRule(concepto, cat) {
 // ════════════════════════════════════════
 // HASH
 // ════════════════════════════════════════
-function hash(fecha, concepto, importe) {
-  const s = `${fecha}|${concepto.toLowerCase().trim().slice(0,80)}|${parseFloat(importe).toFixed(2)}`;
+function hash(fecha, concepto, importe, banco='') {
+  const s = `${fecha}|${banco}|${concepto.toLowerCase().trim().slice(0,80)}|${parseFloat(importe).toFixed(2)}`;
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (Math.imul(31,h) + s.charCodeAt(i)) | 0;
   return Math.abs(h).toString(36);
@@ -1047,16 +1047,20 @@ function buildPendingImport(rows, filename) {
   const existingHashes = new Set(Object.keys(existing));
 
   const allRows = (byMonth[primaryMonth] || []).map(r => {
-    // WALLET special logic: entries = Traspasos internos, exits = PIGEONS
+    // WALLET special logic
     let result;
     if (r.banco === 'WALLET') {
-      result = r.importe > 0
-        ? { cat: 'Traspasos internos', conf: 'high' }
-        : { cat: 'PIGEONS',            conf: 'high' };
+      const c = (r.concepto||'').toLowerCase();
+      const esTraspaso = c.includes('traspaso') || c.includes('transfer');
+      result = esTraspaso
+        ? { cat: 'Traspasos internos', conf: 'high' }   // traspasos desde otro banco al Wallet
+        : r.importe < 0
+        ? { cat: 'PIGEONS',            conf: 'high' }   // pagos a procuradores
+        : { cat: 'Traspasos internos', conf: 'high' };  // otras entradas = traspaso interno
     } else {
       result = categorize(r.concepto, r.importe);
     }
-    const h = hash(r.fecha, r.concepto, r.importe);
+    const h = hash(r.fecha, r.concepto, r.importe, r.banco||'');
     return {...r, cat: result.cat, conf: result.conf, hash: h, dup: existingHashes.has(h)};
   });
 
