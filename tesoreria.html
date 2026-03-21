@@ -146,7 +146,7 @@ async function _initFB() {
   }
 }
 
-// Sincronizar al iniciar — descarga datos de Firestore a localStorage
+// Sincronizar al iniciar — merge inteligente: gana el que tiene más datos
 async function fbSync() {
   const fb = await _initFB();
   if (!fb) return;
@@ -154,18 +154,81 @@ async function fbSync() {
   for (const k of keys) {
     try {
       const snap = await fb.getDoc(fb.doc(fb.fs, 'lpcash', k));
-      if (snap.exists()) {
-        const remoto = snap.data().value;
-        const local  = localStorage.getItem(k);
-        // Si remoto es más reciente (tiene más datos), lo usamos
-        const remotoStr = JSON.stringify(remoto);
-        if (remotoStr !== local) {
-          localStorage.setItem(k, remotoStr);
+      const localStr = localStorage.getItem(k);
+
+      if (!snap.exists()) {
+        // Nada en Firestore — subir localStorage si existe
+        if (localStr) {
+          try {
+            const parsed = JSON.parse(localStr);
+            await fb.setDoc(fb.doc(fb.fs, 'lpcash', k), { value: parsed });
+          } catch(e) {}
         }
+        continue;
       }
+
+      const remoto    = snap.data().value;
+      const remotoStr = JSON.stringify(remoto);
+
+      if (!localStr) {
+        // Nada en local — usar Firestore
+        _origSet(k, remotoStr);
+        continue;
+      }
+
+      // Ambos tienen datos — fusionar eligiendo el más completo
+      try {
+        const local = JSON.parse(localStr);
+
+        // Para movimientos (objeto de objetos) — merge por mes y por hash
+        if (k === 'lp_movs_v3' && typeof remoto === 'object' && typeof local === 'object') {
+          const merged = { ...remoto };
+          for (const mes of Object.keys(local)) {
+            if (!merged[mes]) {
+              merged[mes] = local[mes];
+            } else {
+              // Fusionar movimientos del mes — gana el que más hashes tiene
+              const localMovs  = local[mes]  || {};
+              const remotoMovs = merged[mes] || {};
+              merged[mes] = { ...remotoMovs, ...localMovs }; // local tiene prioridad (más reciente)
+            }
+          }
+          const mergedStr = JSON.stringify(merged);
+          _origSet(k, mergedStr);
+          // Subir el merge a Firestore
+          await fb.setDoc(fb.doc(fb.fs, 'lpcash', k), { value: merged });
+          continue;
+        }
+
+        // Para arrays (imports, rules) — usar el más largo
+        if (Array.isArray(remoto) && Array.isArray(local)) {
+          const winner = local.length >= remoto.length ? local : remoto;
+          const winStr = JSON.stringify(winner);
+          _origSet(k, winStr);
+          if (local.length > remoto.length) {
+            await fb.setDoc(fb.doc(fb.fs, 'lpcash', k), { value: local });
+          }
+          continue;
+        }
+
+        // Para objetos simples (proyecciones, deuda) — fusionar keys
+        if (typeof remoto === 'object' && typeof local === 'object') {
+          const merged = { ...remoto, ...local }; // local tiene prioridad
+          const mergedStr = JSON.stringify(merged);
+          _origSet(k, mergedStr);
+          await fb.setDoc(fb.doc(fb.fs, 'lpcash', k), { value: merged });
+          continue;
+        }
+
+      } catch(e) {
+        // Si falla el parse, usar Firestore
+        _origSet(k, remotoStr);
+      }
+
     } catch(e) { console.warn('sync error', k, e); }
   }
 }
+
 
 // Guardar en localStorage + Firestore
 async function fbSave(key, value) {
