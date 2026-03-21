@@ -331,15 +331,38 @@ const LP_KEYS = new Set(['lp_movs_v3','lp_imports_v3','lp_rules_v3','lp_ingresos
 localStorage.setItem = function(key, value) {
   _origSet(key, value);
   if (LP_KEYS.has(key)) {
-    // Guardar en Firebase de forma asíncrona
-    _initFB().then(fb => {
-      if (!fb) return;
-      try {
-        const parsed = JSON.parse(value);
-        fb.setDoc(fb.doc(fb.fs, 'lpcash', key), { value: parsed });
-      } catch(e) { /* ignorar */ }
-    });
+    // Usar window._fbPushAll expuesto desde el módulo
+    if (window._fbPushAll) window._fbPushAll();
   }
+};
+
+// Exponer en window para acceso desde scripts no-módulo
+window._fbPushAll = async function() {
+  const fb = await _initFB();
+  if (!fb) return false;
+  const keys = ['lp_movs_v3','lp_imports_v3','lp_rules_v3','lp_ingresos_v1','lp_deuda_v1'];
+  for (const k of keys) {
+    const val = localStorage.getItem(k);
+    if (val) {
+      try {
+        await fb.setDoc(fb.doc(fb.fs, 'lpcash', k), { value: JSON.parse(val) });
+      } catch(e) { console.warn('push error', k, e); }
+    }
+  }
+  return true;
+};
+
+window._fbPullAll = async function() {
+  const fb = await _initFB();
+  if (!fb) return false;
+  const keys = ['lp_movs_v3','lp_imports_v3','lp_rules_v3','lp_ingresos_v1','lp_deuda_v1'];
+  for (const k of keys) {
+    try {
+      const snap = await fb.getDoc(fb.doc(fb.fs, 'lpcash', k));
+      if (snap.exists()) localStorage.setItem(k, JSON.stringify(snap.data().value));
+    } catch(e) {}
+  }
+  return true;
 };
 
 window.addEventListener('DOMContentLoaded', () => { fbSync(); });
@@ -355,7 +378,11 @@ window.addEventListener('DOMContentLoaded', () => { fbSync(); });
     <span class="nav-sep">/</span>
     <span class="nav-title">Extractos Bancarios</span>
   </div>
-  <div class="nav-right" id="nav-info">— movimientos guardados</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="nav-right" id="nav-info">— movimientos guardados</div>
+    <span id="sync-status" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,.3)" title="Estado sync Firebase">●</span>
+    <button onclick="forcePush()" style="font-family:'IBM Plex Mono',monospace;font-size:9px;padding:3px 8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);cursor:pointer;border-radius:2px">↑ Sync</button>
+  </div>
 </nav>
 
 <div class="layout">
@@ -530,8 +557,25 @@ window.addEventListener('DOMContentLoaded', () => { fbSync(); });
 
 <script>
 // ════════════════════════════════════════
-// STORAGE KEYS
+// FIREBASE FORCE PUSH
 // ════════════════════════════════════════
+async function forcePush() {
+  const btn = document.querySelector('button[onclick="forcePush()"]');
+  const dot = document.getElementById('sync-status');
+  if (btn) btn.textContent = '⟳ Subiendo...';
+  if (dot) dot.style.color = 'rgba(251,191,36,.7)';
+  try {
+    if (window._fbPushAll) {
+      await window._fbPushAll();
+      if (btn) btn.textContent = '✓ Sync';
+      if (dot) { dot.style.color = 'rgba(74,222,128,.7)'; dot.title = 'Sincronizado con Firebase'; }
+      setTimeout(() => { if (btn) btn.textContent = '↑ Sync'; }, 3000);
+    }
+  } catch(e) {
+    if (btn) btn.textContent = '✗ Error';
+    if (dot) dot.style.color = 'rgba(248,113,113,.7)';
+  }
+}
 const K_MOVS    = 'lp_movs_v3';
 const K_IMPORTS = 'lp_imports_v3';
 const K_RULES   = 'lp_rules_v3';
