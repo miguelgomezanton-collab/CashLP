@@ -197,6 +197,7 @@ td{padding:8px 12px;font-size:12px;vertical-align:middle}
 
 
 <script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
+<script type="module" src="firebase-sync.js"></script>
 </head>
 <body>
 
@@ -409,7 +410,7 @@ const K_IMPORTS = 'lp_imports_v3';
 const K_RULES   = 'lp_rules_v3';
 
 const load  = (k, d='{}') => { try { return JSON.parse(localStorage.getItem(k) || d); } catch { return JSON.parse(d); } };
-const save  = (k, v)       => localStorage.setItem(k, JSON.stringify(v));
+const save  = (k, v)       => { localStorage.setItem(k, JSON.stringify(v)); window.LPSync && window.LPSync.push(k, v); };
 const loadMovs    = () => load(K_MOVS,    '{}');
 const loadImports = () => load(K_IMPORTS, '[]');
 const loadRules   = () => load(K_RULES,   '[]');
@@ -557,7 +558,8 @@ let editedInModal = {};
 // ════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════
-window.onload = () => {
+window.onload = async () => {
+  await (window.LPSync ? window.LPSync.pull() : Promise.resolve());
   buildSidebar();
   // Auto-select most recent month with data
   const movs = loadMovs();

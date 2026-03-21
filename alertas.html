@@ -99,6 +99,7 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 
 
 <script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
+<script type="module" src="firebase-sync.js"></script>
 </head>
 <body>
 
@@ -134,7 +135,10 @@ const fmtE = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0}).forma
 const signed = n => (n>=0?'+':'-')+fmtE(n);
 
 // ── INIT ──
-window.onload = init;
+window.onload = async () => {
+  await (window.LPSync ? window.LPSync.pull() : Promise.resolve());
+  init();
+};
 
 function init() {
   const now = new Date();

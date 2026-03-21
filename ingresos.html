@@ -166,6 +166,7 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 
 
 <script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
+<script type="module" src="firebase-sync.js"></script>
 </head>
 <body>
 
@@ -212,7 +213,7 @@ const MF = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','S
 
 const loadMovs = () => { try { return JSON.parse(localStorage.getItem(K_MOVS)||'{}'); } catch { return {}; } };
 const loadProj = () => { try { return JSON.parse(localStorage.getItem(K_PROJ)||'{}'); } catch { return {}; } };
-const saveProj = d => localStorage.setItem(K_PROJ, JSON.stringify(d));
+const saveProj = d => { localStorage.setItem(K_PROJ, JSON.stringify(d)); window.LPSync && window.LPSync.push(K_PROJ, d); };
 
 const fmt  = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0}).format(Math.round(n));
 const fmtE = n => fmt(n) + '€';
@@ -225,7 +226,8 @@ let viewMode   = 'month'; // 'month' | 'annual'
 // ════════════════════════
 // INIT
 // ════════════════════════
-window.onload = () => {
+window.onload = async () => {
+  await (window.LPSync ? window.LPSync.pull() : Promise.resolve());
   const now = new Date();
   buildSidebar();
   // Default: current month

@@ -114,6 +114,7 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 
 
 <script>if(sessionStorage.getItem("lpcash_auth")!=="1"){window.location.href="/CashLP/login.html"}</script>
+<script type="module" src="firebase-sync.js"></script>
 </head>
 <body>
 <nav>
@@ -169,7 +170,7 @@ nav{background:var(--ink);color:white;height:52px;padding:0 28px;display:flex;al
 <script>
 const K='lp_deuda_v1', KM='lp_movs_v3';
 const ld=()=>{try{return JSON.parse(localStorage.getItem(K)||'[]')}catch{return[]}};
-const sd=d=>localStorage.setItem(K,JSON.stringify(d));
+const sd=d=>{localStorage.setItem(K,JSON.stringify(d));window.LPSync&&window.LPSync.push(K,d)};
 const lm=()=>{try{return JSON.parse(localStorage.getItem(KM)||'{}')}catch{return{}}};
 const fE=n=>new Intl.NumberFormat('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0}).format(Math.round(Math.abs(n)))+'€';
 const fD=s=>{if(!s)return'—';const p=s.split('-');return`${p[2]}/${p[1]}/${p[0]}`};
@@ -178,7 +179,10 @@ const TC={'Póliza':{bg:'#eef3fc',t:'#1a4a8a'},'Préstamo':{bg:'#fdf5e6',t:'#9a5
 const BK={'BSCH':['0049','santander','bsch','0610645','0610424','0608372'],'BBVA':['bbva','cargo por amortizacion de prestamo/credito bbva','abono por disposicion'],'Sabadell':['sabadell','confirming','pago proveedores'],'Bankinter':['bankinter','anticipo fras','510012903'],'Caixabank':['caixa'],'AEAT':['abonare','aplazamiento impuesto']};
 let editId=null,vn=0,vm='all';
 
-window.onload=()=>{buildSB();showAll()};
+window.onload=async()=>{
+  await (window.LPSync ? window.LPSync.pull() : Promise.resolve());
+  buildSB();showAll()
+};
 
 function buildSB(){
   const ls=ld();
